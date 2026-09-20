@@ -21,7 +21,6 @@
     "@lfsci/odoo": "*",
     "@lfsci/opendata": "*",
     "@lfsci/pdf": "*",
-    "@lfsci/sms": "*",
     "@lfsci/storage": "*",
     "@orpc/client": "1.15.2",
     "@orpc/contract": "1.15.2",

@@ -101,12 +101,7 @@ export function LeaseDetailView({ leaseId }: { leaseId: string }) {
         icon={<KeyRound className="size-5" aria-hidden="true" />}
       >
         <LeaseStatusBadge status={data.status} />
-        <Button
-          variant="outline"
-          size="sm"
-          nativeButton={false}
-          render={<Link href="/locations" />}
-        >
+        <Button variant="outline" size="sm" render={<Link href="/locations" />}>
           <ArrowLeft aria-hidden="true" />
           {t("backToLeases")}
         </Button>

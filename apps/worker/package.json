@@ -20,7 +20,6 @@
     "@lfsci/odoo": "*",
     "@lfsci/opendata": "*",
     "@lfsci/pdf": "*",
-    "@lfsci/sms": "*",
     "@lfsci/speech": "*",
     "@lfsci/storage": "*",
     "@sentry/node": "10.75.0",

@@ -89,7 +89,6 @@ export default async function Page({ params }: Props) {
           variant="outline"
           size="lg"
           className="h-11 sm:h-9"
-          nativeButton={false}
           render={<Link href={`/patrimoine/immeubles/${building.id}/modifier`} />}
         >
           {t("edit")}
@@ -97,7 +96,6 @@ export default async function Page({ params }: Props) {
         <Button
           size="lg"
           className="h-11 sm:h-9"
-          nativeButton={false}
           render={<Link href={`/patrimoine/lots/nouveau?immeuble=${building.id}`} />}
         >
           {t("addUnit")}

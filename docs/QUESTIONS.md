@@ -8,7 +8,7 @@ Collected during the autonomous build of 2026-09-20. Each item names what was as
 2. **Rent terms have no Odoo entry point yet.** The connector exposes supplier bills (`in_invoice`), attachments and a reconciliation placeholder. A rent term is a customer invoice (`out_invoice`), and the dispatcher refuses `prepare_rent_accounting` terminally with `no_typed_operation` rather than guess. Phase 0 on the neutralised duplicate must confirm the model, method and fields; then the operation is added.
 3. **Bot user and `/doc` snapshot.** Create a bot user with minimal rights on the duplicate, generate an API key, and export `/doc`; the connector's capability snapshot comes from it.
 4. **Stable reference field in Odoo.** A Studio text field on `account.move` (default name `x_lfsci_ref`, indexed, not unique) carries the operation reference used to reconcile lost responses. Confirm the name.
-5. **LLM residency (D-04).** Default is Claude via Bedrock `eu-west-3`; this forfeits server-side refusal fallbacks, Batches and the Files API. First-party Anthropic API with a DPA is one env flip (`AI_PROVIDER=anthropic`) and cheaper. Which one?
+5. **LLM (D-04) — decided 2026-09-20.** A local Ollama instance on the owner's GPU box is the default provider (`AI_PROVIDER=ollama`); residency is solved by keeping data on the owner's hardware. Open: which models (a text model with tool calling and JSON-schema output for extraction and the assistant, a vision model for receipt photos), the Ollama base URL reachable from the Debian server, and the quality baseline on real receipts before automation (spec IA-04). The Anthropic path stays as an optional fallback.
 6. **Object storage (D-03).** Scaleway `fr-par` bucket credentials, or Garage on the box. Without credentials the dev build uses a local driver.
 7. **Palette (D-08).** Raspberry `#B11649` is implemented from your workspace colour; the house violet is the alternative. Confirm before more screens are styled.
 
@@ -20,9 +20,8 @@ Collected during the autonomous build of 2026-09-20. Each item names what was as
 - Mistral (OCR, EU endpoint) API key.
 - Gladia API key. Note: Gladia documents no region selector on its v2 endpoint; French-infrastructure processing is a contractual statement to check, not an API setting.
 - Resend: domain with the `inbound` MX record and a webhook secret.
-- smsmode: API key, an SDA long-code number for replies, webhook secret. The key header, sender field and inbound payload are marked "to confirm" in code.
 - INSEE `portail-api.insee.fr` developer account (IRL series `001515333`); the auth scheme is unverified.
-- GitHub repository name and GlitchTip DSN.
+- Error reporting is optional: with `SENTRY_DSN` empty nothing is sent anywhere and errors stay in the logs and the ops screen. Decided 2026-09-20: not needed for now. The repository is `noah-lnt/lfsci.fr`.
 
 ## 3. Decisions per area
 
@@ -65,7 +64,7 @@ Collected during the autonomous build of 2026-09-20. Each item names what was as
 
 ## 4. Infrastructure to measure or decide
 
-37. **`local-nolan-sarl` sizing.** RAM, CPU flags (`grep -c avx /proc/cpuinfo`), disk. The prod compose budgets about 1.7 GB across five containers.
+37. **Production server — decided 2026-09-20: the owner's dedicated Debian server.** Still to measure there: RAM, CPU flags (`grep -c avx /proc/cpuinfo`), disk, whether a Traefik with the `web` network, `websecure` entrypoint and `letsencrypt` resolver exists (the prod compose assumes it) or must be added, and whether the Ollama box is reachable from it. The prod compose budgets about 1.7 GB across five containers.
 38. **Typst on that CPU.** Not documented either way; run the worker image once and render a quittance.
 39. **Production database role.** The compose runs the app as the image superuser, which bypasses RLS; hardening means a non-superuser app role plus a `BYPASSRLS` maintenance role for cross-organization jobs.
 40. **Hostname (D-09).** `app.lfsci.fr` assumed; DNS record and Traefik router move together.

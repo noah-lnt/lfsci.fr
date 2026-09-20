@@ -31,7 +31,6 @@ export default async function Page() {
         <Button
           size="lg"
           className="h-11 sm:h-9"
-          nativeButton={false}
           render={<Link href="/patrimoine/immeubles/nouveau" />}
         >
           {actions("addBuilding")}
@@ -40,7 +39,6 @@ export default async function Page() {
           variant="outline"
           size="lg"
           className="h-11 sm:h-9"
-          nativeButton={false}
           render={<Link href="/patrimoine/sci/nouveau" />}
         >
           {actions("addEntity")}

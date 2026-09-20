@@ -2,7 +2,6 @@ import { controlsNightly } from "./controlsNightly";
 import { deadlinesGenerate } from "./deadlinesGenerate";
 import { documentAnalyze } from "./documentAnalyze";
 import { inboundEmail } from "./inboundEmail";
-import { inboundSms } from "./inboundSms";
 import { irlRefresh } from "./irlRefresh";
 import { odooBacksync } from "./odooBacksync";
 import { outboxDispatch } from "./outboxDispatch";
@@ -17,7 +16,6 @@ export const jobs: readonly AnyJob[] = [
   outboxReconcile,
   documentAnalyze,
   inboundEmail,
-  inboundSms,
   voiceTranscribe,
   rentPrepareTerms,
   controlsNightly,
