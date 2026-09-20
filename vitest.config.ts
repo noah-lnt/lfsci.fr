@@ -19,7 +19,7 @@ export default defineConfig({
       {
         test: {
           name: "unit",
-          include: ["packages/**/tests/**/*.test.ts"],
+          include: ["packages/**/tests/**/*.test.ts", "scripts/migrate/tests/**/*.test.ts"],
           exclude: ["packages/db/tests/db/**", "**/node_modules/**"],
           environment: "node",
         },

@@ -3121,6 +3121,50 @@ export const paymentAllocation = pgTable("payment_allocation", {
 	check("payment_allocation_check", sql`num_nonnulls(rent_term_id, deposit_account_id) = 1`),
 ]);
 
+export const rentTerm = pgTable("rent_term", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	organizationId: uuid("organization_id").notNull(),
+	leaseId: uuid("lease_id").notNull(),
+	kind: text().notNull(),
+	periodStart: date("period_start").notNull(),
+	periodEnd: date("period_end").notNull(),
+	dueOn: date("due_on").notNull(),
+	status: text().default('planned').notNull(),
+	currentVersionId: uuid("current_version_id").references((): AnyPgColumn => rentTermVersion.id),
+	postedAt: timestamp("posted_at", { withTimezone: true, mode: 'string' }),
+	settledAt: timestamp("settled_at", { withTimezone: true, mode: 'string' }),
+	adjustsRentTermId: uuid("adjusts_rent_term_id"),
+	regularizationRunId: uuid("regularization_run_id").references((): AnyPgColumn => provisionRegularizationRun.id),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+	version: integer().default(1).notNull(),
+	isMigrationImport: boolean("is_migration_import").default(false).notNull(),
+}, (table) => [
+	index("rent_term_due_idx").using("btree", table.organizationId.asc().nullsLast().op("uuid_ops"), table.status.asc().nullsLast().op("date_ops"), table.dueOn.asc().nullsLast().op("uuid_ops")),
+	index("rent_term_lease_period_idx").using("btree", table.leaseId.asc().nullsLast().op("date_ops"), table.periodStart.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.adjustsRentTermId],
+			foreignColumns: [table.id],
+			name: "rent_term_adjusts_rent_term_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.leaseId],
+			foreignColumns: [lease.id],
+			name: "rent_term_lease_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.organizationId],
+			foreignColumns: [organization.id],
+			name: "rent_term_organization_id_fkey"
+		}),
+	unique("rent_term_identity_key").on(table.kind, table.leaseId, table.periodStart),
+	unique("rent_term_org_id_key").on(table.id, table.organizationId),
+	pgPolicy("rent_term_tenant_isolation", { as: "permissive", for: "all", to: ["public"], using: sql`(organization_id = (NULLIF(current_setting('app.organization_id'::text, true), ''::text))::uuid)`, withCheck: sql`(organization_id = (NULLIF(current_setting('app.organization_id'::text, true), ''::text))::uuid)`  }),
+	check("rent_term_check", sql`period_end >= period_start`),
+	check("rent_term_kind_check", sql`kind = ANY (ARRAY['rent'::text, 'charge_provision'::text, 'charge_flat_fee'::text, 'charge_regularization'::text, 'accessory'::text, 'deposit_call'::text, 'adjustment'::text, 'credit_note'::text])`),
+	check("rent_term_status_check", sql`status = ANY (ARRAY['planned'::text, 'authorized'::text, 'posted'::text, 'partially_settled'::text, 'settled'::text, 'disputed'::text, 'cancelled'::text, 'payment_rejected'::text])`),
+]);
+
 export const payout = pgTable("payout", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	organizationId: uuid("organization_id").notNull(),
@@ -3476,49 +3520,6 @@ export const rentRevision = pgTable("rent_revision", {
 	pgPolicy("rent_revision_tenant_isolation", { as: "permissive", for: "all", to: ["public"], using: sql`(organization_id = (NULLIF(current_setting('app.organization_id'::text, true), ''::text))::uuid)`, withCheck: sql`(organization_id = (NULLIF(current_setting('app.organization_id'::text, true), ''::text))::uuid)`  }),
 	check("rent_revision_index_name_check", sql`index_name = ANY (ARRAY['irl'::text, 'ilc'::text, 'ilat'::text])`),
 	check("rent_revision_status_check", sql`status = ANY (ARRAY['blocked'::text, 'proposed'::text, 'approved'::text, 'applied'::text, 'refused'::text, 'expired'::text])`),
-]);
-
-export const rentTerm = pgTable("rent_term", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	organizationId: uuid("organization_id").notNull(),
-	leaseId: uuid("lease_id").notNull(),
-	kind: text().notNull(),
-	periodStart: date("period_start").notNull(),
-	periodEnd: date("period_end").notNull(),
-	dueOn: date("due_on").notNull(),
-	status: text().default('planned').notNull(),
-	currentVersionId: uuid("current_version_id").references((): AnyPgColumn => rentTermVersion.id),
-	postedAt: timestamp("posted_at", { withTimezone: true, mode: 'string' }),
-	settledAt: timestamp("settled_at", { withTimezone: true, mode: 'string' }),
-	adjustsRentTermId: uuid("adjusts_rent_term_id"),
-	regularizationRunId: uuid("regularization_run_id").references((): AnyPgColumn => provisionRegularizationRun.id),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
-	version: integer().default(1).notNull(),
-}, (table) => [
-	index("rent_term_due_idx").using("btree", table.organizationId.asc().nullsLast().op("uuid_ops"), table.status.asc().nullsLast().op("date_ops"), table.dueOn.asc().nullsLast().op("uuid_ops")),
-	index("rent_term_lease_period_idx").using("btree", table.leaseId.asc().nullsLast().op("date_ops"), table.periodStart.asc().nullsLast().op("uuid_ops")),
-	foreignKey({
-			columns: [table.adjustsRentTermId],
-			foreignColumns: [table.id],
-			name: "rent_term_adjusts_rent_term_id_fkey"
-		}),
-	foreignKey({
-			columns: [table.leaseId],
-			foreignColumns: [lease.id],
-			name: "rent_term_lease_id_fkey"
-		}),
-	foreignKey({
-			columns: [table.organizationId],
-			foreignColumns: [organization.id],
-			name: "rent_term_organization_id_fkey"
-		}),
-	unique("rent_term_identity_key").on(table.kind, table.leaseId, table.periodStart),
-	unique("rent_term_org_id_key").on(table.id, table.organizationId),
-	pgPolicy("rent_term_tenant_isolation", { as: "permissive", for: "all", to: ["public"], using: sql`(organization_id = (NULLIF(current_setting('app.organization_id'::text, true), ''::text))::uuid)`, withCheck: sql`(organization_id = (NULLIF(current_setting('app.organization_id'::text, true), ''::text))::uuid)`  }),
-	check("rent_term_check", sql`period_end >= period_start`),
-	check("rent_term_kind_check", sql`kind = ANY (ARRAY['rent'::text, 'charge_provision'::text, 'charge_flat_fee'::text, 'charge_regularization'::text, 'accessory'::text, 'deposit_call'::text, 'adjustment'::text, 'credit_note'::text])`),
-	check("rent_term_status_check", sql`status = ANY (ARRAY['planned'::text, 'authorized'::text, 'posted'::text, 'partially_settled'::text, 'settled'::text, 'disputed'::text, 'cancelled'::text, 'payment_rejected'::text])`),
 ]);
 
 export const rentTermVersion = pgTable("rent_term_version", {

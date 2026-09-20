@@ -74,6 +74,8 @@ describe("AIR-02 — CSV reading", () => {
     expect(parseCivilDate("07/14/2026", "mdy")).toBe("2026-07-14");
     expect(parseCivilDate("2026-07-14", "ymd")).toBe("2026-07-14");
     expect(parseCivilDate("32/07/2026", "dmy")).toBeNull();
+    expect(parseCivilDate("31/02/2025", "dmy")).toBeNull();
+    expect(parseCivilDate("29/02/2024", "dmy")).toBe("2024-02-29");
     expect(parseMoney("1 309,50 €", "comma")).toBe("1309.50");
     expect(parseMoney("1,309.50", "point")).toBe("1309.50");
     expect(parseMoney("(45.00)", "point")).toBe("-45.00");

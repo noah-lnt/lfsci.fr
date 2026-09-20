@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { legalEntity, bankAccount, organization, building, unitDiagnostic, unit, document, contactPoint, person, appUser, aiExtraction, inboxItem, ruleVersion, activity, documentVersion, objectRef, auditLog, approval, command, equipment, assetComponent, fixedAsset, acquisitionOpportunity, acquisitionScenario, activityLink, bankTransaction, booking, listing, bookingMovement, ccaMovement, partnerCurrentAccount, expense, payment, chargeAllocationKey, chargeAllocationKeyVersion, chargeAllocationShare, claim, lease, insurancePolicy, claimIndemnity, externalRef, commandAttempt, deadline, event, deadlineLink, depositAccount, depositMovement, rentTerm, documentLink, embedding, supplier, equipmentAssignment, eventLink, intervention, worksProject, expenseAllocation, expenseLine, guarantee, inspection, inspectionFinding, integrationCursor, internalTransfer, inventoryItem, leaseParty, leaseUnit, loan, leaseVersion, loanInstallment, loanScheduleVersion, outboxEntry, messageOutbound, loanProperty, membership, meter, meterReading, meterConsumption, meterServicePeriod, paymentAllocation, payout, payoutDetail, personRole, policyScope, provisionRegularizationLine, provisionRegularizationRun, rentReceipt, rentRevision, rentTermVersion, rule, searchDocument, unitLineage, unitUsagePeriod, authUser, authSession, authAccount, authOrganization, authMember, authInvitation, authTwoFactor, integrationExchange } from "./schema";
+import { legalEntity, bankAccount, organization, building, unitDiagnostic, unit, document, contactPoint, person, appUser, aiExtraction, inboxItem, ruleVersion, activity, documentVersion, objectRef, auditLog, approval, command, equipment, assetComponent, fixedAsset, acquisitionOpportunity, acquisitionScenario, activityLink, bankTransaction, booking, listing, bookingMovement, ccaMovement, partnerCurrentAccount, expense, payment, chargeAllocationKey, chargeAllocationKeyVersion, chargeAllocationShare, claim, lease, insurancePolicy, claimIndemnity, externalRef, commandAttempt, deadline, event, deadlineLink, depositAccount, depositMovement, rentTerm, documentLink, embedding, supplier, equipmentAssignment, eventLink, intervention, worksProject, expenseAllocation, expenseLine, guarantee, inspection, inspectionFinding, integrationCursor, internalTransfer, inventoryItem, leaseParty, leaseUnit, loan, leaseVersion, loanInstallment, loanScheduleVersion, outboxEntry, messageOutbound, loanProperty, membership, meter, meterReading, meterConsumption, meterServicePeriod, paymentAllocation, rentTermVersion, provisionRegularizationRun, payout, payoutDetail, personRole, policyScope, provisionRegularizationLine, rentReceipt, rentRevision, rule, searchDocument, unitLineage, unitUsagePeriod, authUser, authSession, authAccount, authOrganization, authMember, authInvitation, authTwoFactor, integrationExchange } from "./schema";
 
 export const bankAccountRelations = relations(bankAccount, ({one, many}) => ({
 	legalEntity: one(legalEntity, {
@@ -122,6 +122,7 @@ export const organizationRelations = relations(organization, ({many}) => ({
 	partnerCurrentAccounts: many(partnerCurrentAccount),
 	payments: many(payment),
 	paymentAllocations: many(paymentAllocation),
+	rentTerms: many(rentTerm),
 	payouts: many(payout),
 	payoutDetails: many(payoutDetail),
 	people: many(person),
@@ -131,7 +132,6 @@ export const organizationRelations = relations(organization, ({many}) => ({
 	provisionRegularizationRuns: many(provisionRegularizationRun),
 	rentReceipts: many(rentReceipt),
 	rentRevisions: many(rentRevision),
-	rentTerms: many(rentTerm),
 	rentTermVersions: many(rentTermVersion),
 	rules: many(rule),
 	ruleVersions: many(ruleVersion),
@@ -1066,11 +1066,11 @@ export const leaseRelations = relations(lease, ({one, many}) => ({
 	leaseUnits: many(leaseUnit),
 	leaseVersions: many(leaseVersion),
 	objectRefs: many(objectRef),
+	rentTerms: many(rentTerm),
 	policyScopes: many(policyScope),
 	provisionRegularizationLines: many(provisionRegularizationLine),
 	rentReceipts: many(rentReceipt),
 	rentRevisions: many(rentRevision),
-	rentTerms: many(rentTerm),
 }));
 
 export const insurancePolicyRelations = relations(insurancePolicy, ({one, many}) => ({
@@ -1248,7 +1248,6 @@ export const rentTermRelations = relations(rentTerm, ({one, many}) => ({
 	depositMovements: many(depositMovement),
 	objectRefs: many(objectRef),
 	paymentAllocations: many(paymentAllocation),
-	provisionRegularizationLines: many(provisionRegularizationLine),
 	rentTerm: one(rentTerm, {
 		fields: [rentTerm.adjustsRentTermId],
 		references: [rentTerm.id],
@@ -1274,6 +1273,7 @@ export const rentTermRelations = relations(rentTerm, ({one, many}) => ({
 		fields: [rentTerm.regularizationRunId],
 		references: [provisionRegularizationRun.id]
 	}),
+	provisionRegularizationLines: many(provisionRegularizationLine),
 	rentTermVersions: many(rentTermVersion, {
 		relationName: "rentTermVersion_rentTermId_rentTerm_id"
 	}),
@@ -1877,6 +1877,54 @@ export const paymentAllocationRelations = relations(paymentAllocation, ({one}) =
 	}),
 }));
 
+export const rentTermVersionRelations = relations(rentTermVersion, ({one, many}) => ({
+	rentTerms: many(rentTerm, {
+		relationName: "rentTerm_currentVersionId_rentTermVersion_id"
+	}),
+	leaseVersion: one(leaseVersion, {
+		fields: [rentTermVersion.leaseVersionId],
+		references: [leaseVersion.id]
+	}),
+	organization: one(organization, {
+		fields: [rentTermVersion.organizationId],
+		references: [organization.id]
+	}),
+	rentTerm: one(rentTerm, {
+		fields: [rentTermVersion.rentTermId],
+		references: [rentTerm.id],
+		relationName: "rentTermVersion_rentTermId_rentTerm_id"
+	}),
+	ruleVersion: one(ruleVersion, {
+		fields: [rentTermVersion.ruleVersionId],
+		references: [ruleVersion.id]
+	}),
+}));
+
+export const provisionRegularizationRunRelations = relations(provisionRegularizationRun, ({one, many}) => ({
+	rentTerms: many(rentTerm),
+	provisionRegularizationLines: many(provisionRegularizationLine),
+	building: one(building, {
+		fields: [provisionRegularizationRun.buildingId],
+		references: [building.id]
+	}),
+	legalEntity: one(legalEntity, {
+		fields: [provisionRegularizationRun.legalEntityId],
+		references: [legalEntity.id]
+	}),
+	organization: one(organization, {
+		fields: [provisionRegularizationRun.organizationId],
+		references: [organization.id]
+	}),
+	approval: one(approval, {
+		fields: [provisionRegularizationRun.approvalId],
+		references: [approval.id]
+	}),
+	ruleVersion: one(ruleVersion, {
+		fields: [provisionRegularizationRun.ruleVersionId],
+		references: [ruleVersion.id]
+	}),
+}));
+
 export const payoutRelations = relations(payout, ({one, many}) => ({
 	bankTransaction: one(bankTransaction, {
 		fields: [payout.bankTransactionId],
@@ -1981,31 +2029,6 @@ export const provisionRegularizationLineRelations = relations(provisionRegulariz
 	}),
 }));
 
-export const provisionRegularizationRunRelations = relations(provisionRegularizationRun, ({one, many}) => ({
-	provisionRegularizationLines: many(provisionRegularizationLine),
-	building: one(building, {
-		fields: [provisionRegularizationRun.buildingId],
-		references: [building.id]
-	}),
-	legalEntity: one(legalEntity, {
-		fields: [provisionRegularizationRun.legalEntityId],
-		references: [legalEntity.id]
-	}),
-	organization: one(organization, {
-		fields: [provisionRegularizationRun.organizationId],
-		references: [organization.id]
-	}),
-	approval: one(approval, {
-		fields: [provisionRegularizationRun.approvalId],
-		references: [approval.id]
-	}),
-	ruleVersion: one(ruleVersion, {
-		fields: [provisionRegularizationRun.ruleVersionId],
-		references: [ruleVersion.id]
-	}),
-	rentTerms: many(rentTerm),
-}));
-
 export const rentReceiptRelations = relations(rentReceipt, ({one}) => ({
 	contactPoint: one(contactPoint, {
 		fields: [rentReceipt.deliveryConsentContactPointId],
@@ -2040,29 +2063,6 @@ export const rentRevisionRelations = relations(rentRevision, ({one}) => ({
 	}),
 	ruleVersion: one(ruleVersion, {
 		fields: [rentRevision.ruleVersionId],
-		references: [ruleVersion.id]
-	}),
-}));
-
-export const rentTermVersionRelations = relations(rentTermVersion, ({one, many}) => ({
-	rentTerms: many(rentTerm, {
-		relationName: "rentTerm_currentVersionId_rentTermVersion_id"
-	}),
-	leaseVersion: one(leaseVersion, {
-		fields: [rentTermVersion.leaseVersionId],
-		references: [leaseVersion.id]
-	}),
-	organization: one(organization, {
-		fields: [rentTermVersion.organizationId],
-		references: [organization.id]
-	}),
-	rentTerm: one(rentTerm, {
-		fields: [rentTermVersion.rentTermId],
-		references: [rentTerm.id],
-		relationName: "rentTermVersion_rentTermId_rentTerm_id"
-	}),
-	ruleVersion: one(ruleVersion, {
-		fields: [rentTermVersion.ruleVersionId],
 		references: [ruleVersion.id]
 	}),
 }));

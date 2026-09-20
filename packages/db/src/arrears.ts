@@ -37,7 +37,7 @@ async function rows<T extends Record<string, unknown>>(
   return [...(await tx.execute<T>(query))] as T[];
 }
 
-/** Terms due before `asOf` and not settled, with the billing tenant and their active e-mail. */
+/** Terms due before `asOf` and not settled, with the billing tenant and their active e-mail. Imported history is excluded (TMP-04). */
 export async function overdueTerms(tx: Tx, asOf: string): Promise<OverdueTermRow[]> {
   return rows<OverdueTermRow>(
     tx,
@@ -78,6 +78,7 @@ export async function overdueTerms(tx: Tx, asOf: string): Promise<OverdueTermRow
                ) tenant ON TRUE
          WHERE t.due_on < ${asOf}::date
            AND t.status NOT IN ('settled', 'cancelled')
+           AND t.is_migration_import = false
          ORDER BY t.due_on, t.id
          LIMIT ${ARREARS_TERM_LIMIT}`,
   );

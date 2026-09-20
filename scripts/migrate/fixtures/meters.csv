@@ -1,0 +1,5 @@
+Société;Immeuble;Fluide;Portée;Numéro de série;PRM;Dernier index;Date du relevé
+SCI Exemple;IMM-01;électricité;individuel;ELEC-0001;12345678901234;12345,6;30/06/2026
+SCI Exemple;IMM-01;eau froide;collectif;EAU-0001;;;
+SCI Exemple;IMM-99;gaz;individuel;GAZ-0001;;100;01/01/2026
+SCI Exemple;IMM-01;plasma;individuel;PLS-0001;;;

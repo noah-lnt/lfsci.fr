@@ -362,7 +362,8 @@ export function parseCivilDate(raw: string, order: ImportMapping["dateOrder"]): 
   if (monthNumber < 1 || monthNumber > 12 || dayNumber < 1 || dayNumber > 31) return null;
   const padded = `${String(yearNumber).padStart(4, "0")}-${String(monthNumber).padStart(2, "0")}-${String(dayNumber).padStart(2, "0")}`;
   const parsed = new Date(`${padded}T12:00:00Z`);
-  return Number.isNaN(parsed.getTime()) ? null : padded;
+  // A 31 February rolls to March 3 rather than failing; only a round trip proves the day exists.
+  return parsed.toISOString().slice(0, 10) === padded ? padded : null;
 }
 
 const CLEAN_MONEY = /[\s  €$£]/g;

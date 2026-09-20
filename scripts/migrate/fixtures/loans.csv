@@ -1,0 +1,4 @@
+Société;Référence du prêt;Prêteur;Capital emprunté;Date de déblocage;Durée (mois);Taux nominal;Capital restant dû;CRD au
+SCI Exemple;PRET-2019-01;Banque Populaire;180 000,00;15/06/2019;240;1,25;121 430,55;31/12/2025
+SCI Exemple;PRET-2021-02;Crédit Agricole;95 000,00;01/02/2021;180;0,95;;
+SCI Exemple;PRET-2022-03;Banque Populaire;;01/02/2022;180;0,95;;
