@@ -69,6 +69,7 @@ export default async function Page({ params }: Props) {
           variant="outline"
           size="lg"
           className="h-11 sm:h-9"
+          nativeButton={false}
           render={<Link href={`/patrimoine/lots/${unit.id}/modifier`} />}
         >
           {t("edit")}

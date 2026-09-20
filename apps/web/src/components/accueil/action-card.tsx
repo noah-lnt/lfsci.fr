@@ -49,7 +49,12 @@ export function ActionCardItem({ card }: { card: Card }) {
       </p>
 
       <div className="mt-3">
-        <Button variant="outline" size="sm" render={<Link href={card.proposedAction.href} />}>
+        <Button
+          variant="outline"
+          size="sm"
+          nativeButton={false}
+          render={<Link href={card.proposedAction.href} />}
+        >
           {card.proposedAction.label}
           <ArrowRight aria-hidden="true" />
         </Button>

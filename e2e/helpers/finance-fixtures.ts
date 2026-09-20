@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { eq, ilike } from "drizzle-orm";
 // Imported by path, not through "@lfsci/db": the package index re-exports the
@@ -10,7 +11,8 @@ import { withTenant } from "../../packages/db/src/tenant";
 // the finance and travaux screens need, inside the organization the UI signup
 // has just created. Playwright runs from the repository root, where `.env` is.
 if (!process.env.DATABASE_URL) {
-  process.loadEnvFile(resolve(process.cwd(), ".env"));
+  const envFile = resolve(process.cwd(), ".env");
+  if (existsSync(envFile)) process.loadEnvFile(envFile);
 }
 
 export type FinanceFixture = {

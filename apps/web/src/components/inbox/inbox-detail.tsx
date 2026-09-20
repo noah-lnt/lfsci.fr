@@ -87,7 +87,13 @@ export function InboxDetail({ id, onDecided }: Props) {
         <h3 className="text-xs font-medium text-muted-foreground">{t("original")}</h3>
         <p className="mt-1 whitespace-pre-wrap text-sm">{item.bodyRaw ?? item.summary ?? "—"}</p>
         {item.documentId ? (
-          <Button className="mt-2" variant="outline" size="sm" render={<Link href={href} />}>
+          <Button
+            className="mt-2"
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<Link href={href} />}
+          >
             {t("openDocument")}
           </Button>
         ) : null}

@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { eq } from "drizzle-orm";
 // Deep source imports: the @lfsci/db barrel re-exports the migrator, whose
 // `import.meta` cannot be loaded by Playwright's CommonJS transpilation.
@@ -11,7 +12,7 @@ let handle: DbHandle | undefined;
 function db(): DbHandle {
   if (!handle) {
     // The dev server and the tests share one .env; the fixtures read the same DSN.
-    process.loadEnvFile();
+    if (existsSync(".env")) process.loadEnvFile();
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL is not set");
     handle = createDb({ url, max: 2, applicationName: "lfsci-e2e" });

@@ -99,7 +99,11 @@ export function LeasesView() {
           <Plus aria-hidden="true" />
           {t("newLease")}
         </Button>
-        <Button variant="outline" render={<Link href="/locations/locataires" />}>
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<Link href="/locations/locataires" />}
+        >
           <Users aria-hidden="true" />
           {t("tenantsLink")}
         </Button>

@@ -73,7 +73,7 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm run db:migrate
       - run: npm run db:seed
       - run: npm run e2e

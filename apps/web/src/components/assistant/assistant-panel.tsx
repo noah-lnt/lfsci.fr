@@ -154,6 +154,7 @@ export function AssistantPanel() {
               className="mt-2"
               size="sm"
               variant="outline"
+              nativeButton={false}
               render={<Link href={`/validations#${proposal}`} />}
             >
               {t("openProposal")}
