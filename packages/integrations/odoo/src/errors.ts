@@ -97,6 +97,33 @@ export function mapHttpFailure(status: number, body: unknown, context: CallConte
   return { error: new AppError("UPSTREAM_REJECTED", { details }), transport: false };
 }
 
+const authFaultNames = [
+  "odoo.exceptions.AccessDenied",
+  "odoo.http.SessionExpiredException",
+  "werkzeug.exceptions.Unauthorized",
+];
+
+export function isAuthFault(fault: OdooFault): boolean {
+  return fault.name !== undefined && authFaultNames.includes(fault.name);
+}
+
+/** JSON-RPC answers 200 with an `error` envelope, so the fault carries the whole verdict. */
+export function mapRpcFault(envelope: unknown, context: CallContext): MappedFailure {
+  const body = isRecord(envelope) && isRecord(envelope.data) ? envelope.data : envelope;
+  const fault = parseFault(body);
+  if (fault.debug !== undefined) fault.debug = fault.debug.slice(0, 2000);
+  const details = baseDetails(context, fault, null);
+  details.reason = "jsonrpc_fault";
+
+  if (isPeriodLocked(fault)) {
+    return { error: new AppError("PERIOD_LOCKED", { details }), transport: false };
+  }
+  if (isAuthFault(fault)) {
+    return { error: new AppError("UPSTREAM_REJECTED", { details }), transport: false };
+  }
+  return { error: new AppError("UPSTREAM_REJECTED", { details }), transport: false };
+}
+
 export function mapNetworkFailure(cause: unknown, context: CallContext): MappedFailure {
   const details = baseDetails(context, {}, null);
   details.reason = "network";

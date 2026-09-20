@@ -8,10 +8,13 @@ export type FakeCall = {
   kwargs: Record<string, unknown>;
   headers: Record<string, string>;
   at: number;
+  /** Set on the /jsonrpc route: the raw execute_kw envelope, api key blanked. */
+  rpc?: { service: string; uid: number | null; args: unknown[]; kwargs: Record<string, unknown> };
 };
 
 type Directive =
   | { type: "fail"; status: number; payload: unknown }
+  | { type: "fault"; payload: unknown }
   | { type: "delay"; ms: number }
   | { type: "drop" };
 
@@ -19,6 +22,8 @@ export type FakeOdooOptions = {
   baseUrl?: string;
   apiKey?: string;
   database?: string;
+  login?: string;
+  uid?: number;
   doc?: unknown;
   now?: () => number;
 };
@@ -31,13 +36,19 @@ export type MethodHandler = (
 export type FakeOdoo = {
   readonly baseUrl: string;
   readonly apiKey: string;
+  readonly database: string;
+  readonly login: string;
+  readonly uid: number;
+  readonly authCalls: number;
   readonly calls: FakeCall[];
   readonly fetch: typeof globalThis.fetch;
   seed(model: string, records: Record<string, unknown>[]): FakeRecord[];
   records(model: string): FakeRecord[];
   handle(model: string, method: string, handler: MethodHandler): void;
   setDoc(doc: unknown): void;
+  expireSession(): void;
   failNext(status: number, payload: unknown): void;
+  faultNext(payload: unknown): void;
   delayNext(ms: number): void;
   dropNextResponse(): void;
 };
@@ -153,6 +164,11 @@ function project(record: FakeRecord, fields: unknown): FakeRecord {
 export function createFakeOdoo(options: FakeOdooOptions = {}): FakeOdoo {
   const baseUrl = options.baseUrl ?? "https://odoo.test";
   const apiKey = options.apiKey ?? "test-api-key";
+  const database = options.database ?? "lfsci-test";
+  const login = options.login ?? "lfsci-bot";
+  const uid = options.uid ?? 7;
+  let authCalls = 0;
+  let sessionValid = true;
   const now = options.now ?? Date.now;
   const store = new Map<string, FakeRecord[]>();
   const sequences = new Map<string, number>();
@@ -243,6 +259,119 @@ export function createFakeOdoo(options: FakeOdooOptions = {}): FakeOdoo {
     }
   }
 
+  function rpcResult(id: unknown, result: unknown): Response {
+    return json({ jsonrpc: "2.0", id, result });
+  }
+
+  function rpcFault(id: unknown, name: string, message: string): Response {
+    return json({
+      jsonrpc: "2.0",
+      id,
+      error: {
+        code: 200,
+        message: "Odoo Server Error",
+        data: { name, message, arguments: [message], context: {}, debug: "Traceback (most ..." },
+      },
+    });
+  }
+
+  function unshapeExecuteKw(
+    method: string,
+    args: unknown[],
+    kwargs: Record<string, unknown>,
+  ): Record<string, unknown> {
+    switch (method) {
+      case "create":
+        return { ...kwargs, vals_list: args[0] };
+      case "write":
+        return { ...kwargs, ids: args[0], vals: args[1] };
+      default:
+        return args.length > 0 ? { ...kwargs, ids: args[0] } : { ...kwargs };
+    }
+  }
+
+  function handleJsonRpc(
+    rawBody: string,
+    headers: Record<string, string>,
+    directive: Directive | undefined,
+    signal: AbortSignal | null,
+  ): Promise<Response> | Response {
+    const envelope = (JSON.parse(rawBody) ?? {}) as Record<string, unknown>;
+    const id = envelope.id;
+    const params = (envelope.params ?? {}) as Record<string, unknown>;
+    const rpcArgs = asArray(params.args);
+
+    if (params.service === "common" && params.method === "authenticate") {
+      // Directives target the business call, not the session handshake in front of it.
+      if (directive) directives.unshift(directive);
+      authCalls += 1;
+      const [db, user, key] = rpcArgs;
+      const ok = db === database && user === login && key === apiKey;
+      if (ok) sessionValid = true;
+      return rpcResult(id, ok ? uid : false);
+    }
+
+    if (params.service !== "object" || params.method !== "execute_kw") {
+      return rpcFault(id, "werkzeug.exceptions.NotFound", `No service ${String(params.service)}`);
+    }
+
+    const [db, callUid, key, rawModel, rawMethod, callArgs, callKwargs] = rpcArgs;
+    if (db !== database || key !== apiKey) {
+      return rpcFault(id, "odoo.exceptions.AccessDenied", "Access Denied");
+    }
+    if (!sessionValid || callUid !== uid) {
+      return rpcFault(id, "odoo.http.SessionExpiredException", "Session expired");
+    }
+
+    const model = String(rawModel);
+    const method = String(rawMethod);
+    const kwargs = unshapeExecuteKw(
+      method,
+      asArray(callArgs),
+      (callKwargs ?? {}) as Record<string, unknown>,
+    );
+    calls.push({
+      model,
+      method,
+      kwargs,
+      headers,
+      at: now(),
+      rpc: {
+        service: "object",
+        uid: typeof callUid === "number" ? callUid : null,
+        args: asArray(callArgs),
+        kwargs: (callKwargs ?? {}) as Record<string, unknown>,
+      },
+    });
+
+    if (directive?.type === "fail") return json(directive.payload, directive.status);
+    if (directive?.type === "fault") {
+      return json({ jsonrpc: "2.0", id, error: directive.payload });
+    }
+
+    let result: unknown;
+    try {
+      result = dispatch(model, method, kwargs);
+    } catch (cause) {
+      return rpcFault(id, "odoo.exceptions.UserError", String(cause));
+    }
+    if (result === undefined) {
+      return rpcFault(
+        id,
+        "odoo.exceptions.AccessError",
+        `Method ${method} is not available on ${model}`,
+      );
+    }
+
+    if (directive?.type === "drop") {
+      return new Promise<Response>((_resolve, reject) => {
+        if (!signal) return;
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+      });
+    }
+    return rpcResult(id, result);
+  }
+
   type FetchInput = Parameters<typeof globalThis.fetch>[0];
   type FetchInit = Parameters<typeof globalThis.fetch>[1];
 
@@ -258,7 +387,7 @@ export function createFakeOdoo(options: FakeOdooOptions = {}): FakeOdoo {
       await new Promise((resolve) => setTimeout(resolve, directive.ms));
     }
 
-    if (headers.Authorization !== `bearer ${apiKey}`) {
+    if (url !== `${baseUrl}/jsonrpc` && headers.Authorization !== `bearer ${apiKey}`) {
       return json(
         {
           name: "werkzeug.exceptions.Unauthorized",
@@ -267,6 +396,10 @@ export function createFakeOdoo(options: FakeOdooOptions = {}): FakeOdoo {
         },
         401,
       );
+    }
+
+    if (url === `${baseUrl}/jsonrpc`) {
+      return handleJsonRpc(String(init?.body ?? "{}"), headers, directive, init?.signal ?? null);
     }
 
     if (url === `${baseUrl}/doc`) return json(doc);
@@ -326,8 +459,17 @@ export function createFakeOdoo(options: FakeOdooOptions = {}): FakeOdoo {
   return {
     baseUrl,
     apiKey,
+    database,
+    login,
+    uid,
+    get authCalls() {
+      return authCalls;
+    },
     calls,
     fetch: fetchImpl,
+    expireSession() {
+      sessionValid = false;
+    },
     seed(model, records) {
       return records.map((values) => insert(model, values));
     },
@@ -342,6 +484,9 @@ export function createFakeOdoo(options: FakeOdooOptions = {}): FakeOdoo {
     },
     failNext(status, payload) {
       directives.push({ type: "fail", status, payload });
+    },
+    faultNext(payload) {
+      directives.push({ type: "fault", payload });
     },
     delayNext(ms) {
       directives.push({ type: "delay", ms });

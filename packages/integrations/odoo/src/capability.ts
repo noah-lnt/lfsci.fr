@@ -14,6 +14,28 @@ export type CapabilitySnapshot = {
   raw: string;
   parsed: unknown;
   models: Record<string, CapabilityModel> | undefined;
+  /** `doc` is Odoo 19's /doc; `fields_get` is the 18 fallback, which cannot list methods. */
+  source?: "doc" | "fields_get";
+};
+
+/** No Odoo RPC lists a model's methods, so the snapshot records the ones we call. */
+export const CONNECTOR_METHODS: Record<string, string[]> = {
+  "res.partner": ["search_read", "create", "write"],
+  "res.company": ["search_read", "write"],
+  "account.journal": ["search_read", "write"],
+  "account.account": ["search_read"],
+  "account.move": ["search_read", "create", "write", "action_post"],
+  "account.move.line": ["search_read"],
+  "account.bank.statement": ["search_read"],
+  "account.bank.statement.line": [
+    "search_read",
+    "write",
+    "add_multiple_lines",
+    "reconcile_bank_line",
+    "unreconcile_bank_line",
+  ],
+  "account.statement.import": ["create", "import_file_button"],
+  "ir.attachment": ["search_read", "create"],
 };
 
 function readMethods(entry: unknown): string[] | undefined {
@@ -45,7 +67,48 @@ export function parseCapabilityModels(
   return Object.keys(models).length > 0 ? models : undefined;
 }
 
-export async function fetchCapabilitySnapshot(client: OdooClient): Promise<CapabilitySnapshot> {
+/**
+ * Odoo 18 has no /doc, and `ir.model` is readable only by Access Rights users, so a
+ * service account introspects each model with `fields_get` instead.
+ */
+export async function introspectCapabilitySnapshot(
+  client: OdooClient,
+  methodsByModel: Record<string, string[]> = CONNECTOR_METHODS,
+): Promise<CapabilitySnapshot> {
+  const models: Record<string, CapabilityModel> = {};
+  const unreachable: Record<string, string> = {};
+
+  for (const [model, methods] of Object.entries(methodsByModel)) {
+    try {
+      const described = await client.call<Record<string, unknown>>(
+        model,
+        "fields_get",
+        { allfields: [], attributes: ["type", "store"] },
+        { idempotent: true },
+      );
+      models[model] = { methods, fields: Object.keys(described).sort() };
+    } catch (cause) {
+      unreachable[model] = cause instanceof Error ? cause.message : String(cause);
+    }
+  }
+
+  const parsed = { models, unreachable };
+  return {
+    capturedAt: new Date().toISOString(),
+    baseUrl: client.baseUrl,
+    database: client.database,
+    raw: JSON.stringify(parsed),
+    parsed,
+    models,
+    source: "fields_get",
+  };
+}
+
+export async function fetchCapabilitySnapshot(
+  client: OdooClient,
+  methodsByModel: Record<string, string[]> = CONNECTOR_METHODS,
+): Promise<CapabilitySnapshot> {
+  if (client.transport === "jsonrpc") return introspectCapabilitySnapshot(client, methodsByModel);
   const doc = await client.getDoc();
   return {
     capturedAt: new Date().toISOString(),
@@ -54,7 +117,17 @@ export async function fetchCapabilitySnapshot(client: OdooClient): Promise<Capab
     raw: doc.text,
     parsed: doc.json,
     models: parseCapabilityModels(doc.json),
+    source: "doc",
   };
+}
+
+export function hasCapabilityField(
+  snapshot: CapabilitySnapshot | null | undefined,
+  model: string,
+  field: string,
+): boolean {
+  const fields = snapshot?.models?.[model]?.fields;
+  return fields === undefined ? true : fields.includes(field);
 }
 
 export function assertCapability(

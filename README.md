@@ -54,3 +54,18 @@ docs                spec, tech pack, schema, research
 ## Production
 
 One VPS behind Traefik: `docker-compose.prod.yml` (web, worker, db, backup, one-shot migrate), configured from `deploy/env.prod.example`, deployed with `scripts/deploy.sh`. Details in `docs/tech-pack.md` §11.
+
+## Local Odoo for Phase 0
+
+An Odoo 18 Community instance with the OCA bank-statement and reconciliation modules, used to
+answer whether self-hosting can replace Odoo Online. It lives behind a compose profile, so
+`npm run db:up` is unchanged.
+
+```bash
+bash docker/odoo/fetch-oca.sh                                     # clone the 18.0 OCA branches
+docker compose -f docker-compose.dev.yml --profile odoo up -d     # odoo :8069, its postgres :5435
+npx tsx --env-file-if-exists=.env scripts/odoo-poc/run.ts         # the probe, results in docs/odoo-poc.md
+```
+
+`ODOO_TRANSPORT=jsonrpc` selects the Odoo 18 transport (`/jsonrpc` + `execute_kw`); `json2` stays
+the default for Odoo Online 19. Findings and the verdict: `docs/odoo-poc.md`.

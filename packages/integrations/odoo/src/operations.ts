@@ -97,6 +97,20 @@ const bankStatementLineFields = [
   "write_date",
 ];
 
+function invoiceLineValues(line: SupplierBillLine): Record<string, unknown> {
+  const values: Record<string, unknown> = {
+    name: line.name,
+    price_unit: line.priceUnit,
+    quantity: line.quantity ?? 1,
+  };
+  if (line.accountId !== undefined) values.account_id = line.accountId;
+  if (line.taxIds !== undefined) values.tax_ids = [[6, 0, line.taxIds]];
+  if (line.analyticDistribution !== undefined) {
+    values.analytic_distribution = line.analyticDistribution;
+  }
+  return values;
+}
+
 function parseRecords<T>(schema: z.ZodType<T>, value: unknown, model: string, method: string): T[] {
   const result = z.array(schema).safeParse(value);
   if (!result.success) {
@@ -140,7 +154,20 @@ export type SupplierBillLine = {
   priceUnit: number;
   quantity?: number;
   accountId?: number;
+  taxIds?: number[];
   analyticDistribution?: Record<string, number>;
+};
+
+export type CreateCustomerInvoiceInput = {
+  partnerId: number;
+  invoiceDate: string;
+  /** Odoo snaps a posting past a lock date unless the accounting date is explicit. */
+  accountingDate?: string;
+  lines: SupplierBillLine[];
+  ref?: string;
+  journalId?: number;
+  currencyId?: number;
+  operationRef?: string;
 };
 
 export type CreateSupplierBillInput = {
@@ -342,24 +369,31 @@ export function createOdooOperations(client: OdooClient, options: OdooOperations
     ): Promise<{ id: number; operationRef: string }> {
       const operationRef = input.operationRef ?? newOperationRef();
       // to confirm on /doc (Phase 0): x2many command triples accepted through JSON-2 create
-      const lines = input.lines.map((line) => {
-        const values: Record<string, unknown> = {
-          name: line.name,
-          price_unit: line.priceUnit,
-          quantity: line.quantity ?? 1,
-        };
-        if (line.accountId !== undefined) values.account_id = line.accountId;
-        if (line.analyticDistribution !== undefined) {
-          values.analytic_distribution = line.analyticDistribution;
-        }
-        return [0, 0, values];
-      });
+      const lines = input.lines.map((line) => [0, 0, invoiceLineValues(line)]);
       const vals: Record<string, unknown> = {
         move_type: "in_invoice",
         partner_id: input.partnerId,
         invoice_date: input.invoiceDate,
         invoice_line_ids: lines,
       };
+      if (input.ref !== undefined) vals.ref = input.ref;
+      if (input.journalId !== undefined) vals.journal_id = input.journalId;
+      if (input.currencyId !== undefined) vals.currency_id = input.currencyId;
+      const id = await create("account.move", vals, operationRef);
+      return { id, operationRef };
+    },
+
+    async createDraftCustomerInvoice(
+      input: CreateCustomerInvoiceInput,
+    ): Promise<{ id: number; operationRef: string }> {
+      const operationRef = input.operationRef ?? newOperationRef();
+      const vals: Record<string, unknown> = {
+        move_type: "out_invoice",
+        partner_id: input.partnerId,
+        invoice_date: input.invoiceDate,
+        invoice_line_ids: input.lines.map((line) => [0, 0, invoiceLineValues(line)]),
+      };
+      if (input.accountingDate !== undefined) vals.date = input.accountingDate;
       if (input.ref !== undefined) vals.ref = input.ref;
       if (input.journalId !== undefined) vals.journal_id = input.journalId;
       if (input.currencyId !== undefined) vals.currency_id = input.currencyId;
@@ -403,6 +437,27 @@ export function createOdooOperations(client: OdooClient, options: OdooOperations
         target.model,
         target.method,
         { ids: [input.statementLineId], move_line_ids: input.moveLineIds },
+        { idempotent: false },
+      );
+    },
+
+    /**
+     * OCA `account_reconcile_oca`: the widget's two server calls, in order.
+     * `add_multiple_lines` fills the serialised reconcile data, `reconcile_bank_line` posts it.
+     */
+    async reconcileBankLine(input: ProposeReconciliationInput): Promise<void> {
+      assertCapability(capability, "account.bank.statement.line", "add_multiple_lines");
+      await client.call(
+        "account.bank.statement.line",
+        "add_multiple_lines",
+        { ids: [input.statementLineId], domain: [["id", "in", input.moveLineIds]] },
+        { idempotent: false },
+      );
+      assertCapability(capability, "account.bank.statement.line", "reconcile_bank_line");
+      await client.call(
+        "account.bank.statement.line",
+        "reconcile_bank_line",
+        { ids: [input.statementLineId] },
         { idempotent: false },
       );
     },

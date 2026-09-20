@@ -19,6 +19,25 @@ export function setup(overrides: Partial<OdooClientConfig> = {}) {
   return { clock, server, recorder, client };
 }
 
+export function setupRpc(overrides: Partial<OdooClientConfig> = {}) {
+  const clock = createManualClock();
+  const server = createFakeOdoo({ now: () => clock.now() });
+  const recorder = createMemoryRecorder();
+  const client = createOdooClient({
+    baseUrl: server.baseUrl,
+    apiKey: server.apiKey,
+    database: server.database,
+    login: server.login,
+    transport: "jsonrpc",
+    fetch: server.fetch,
+    clock,
+    recorder,
+    random: () => 0.5,
+    ...overrides,
+  });
+  return { clock, server, recorder, client };
+}
+
 export const noRetry = { maxAttempts: 1, baseDelayMs: 1, maxDelayMs: 1 };
 
 export function seedMoves(

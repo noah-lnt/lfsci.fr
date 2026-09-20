@@ -1,7 +1,10 @@
 export type { CapabilityModel, CapabilitySnapshot } from "./capability";
 export {
   assertCapability,
+  CONNECTOR_METHODS,
   fetchCapabilitySnapshot,
+  hasCapabilityField,
+  introspectCapabilitySnapshot,
   parseCapabilityModels,
 } from "./capability";
 export type {
@@ -10,6 +13,7 @@ export type {
   OdooClientConfig,
   OdooDoc,
   OdooKwargs,
+  OdooTransport,
 } from "./client";
 export {
   createOdooClient,
@@ -17,6 +21,7 @@ export {
   isTransportError,
   REQUEST_ID_CONTEXT_KEY,
   REQUEST_ID_HEADER,
+  shapeExecuteKw,
 } from "./client";
 export type { Clock } from "./clock";
 export { systemClock } from "./clock";
@@ -33,9 +38,11 @@ export {
 export type { CallContext, MappedFailure, OdooFault } from "./errors";
 export {
   faultText,
+  isAuthFault,
   isPeriodLocked,
   mapHttpFailure,
   mapNetworkFailure,
+  mapRpcFault,
   mapTimeoutFailure,
   parseFault,
 } from "./errors";
@@ -43,6 +50,7 @@ export type { ExchangeRecord, ExchangeRecorder } from "./exchange";
 export { createMemoryRecorder, noopRecorder, redactExchange } from "./exchange";
 export type {
   AttachDocumentInput,
+  CreateCustomerInvoiceInput,
   CreateSupplierBillInput,
   Many2one,
   OdooAccountMove,

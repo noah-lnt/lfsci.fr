@@ -18,3 +18,6 @@ test-results/
 apps/worker/typst-out/
 docs/full.txt
 apps/web/.storage/
+docker/odoo/oca/
+docker/odoo/addons/
+scripts/odoo-poc/out/
