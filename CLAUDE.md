@@ -34,7 +34,7 @@ npm run spec:docx                                        # rebuild the Word spec
 - **Odoo Online stays the ledger (owner decision 2026-09-20), chosen for its native bank reconciliation; the API needs the Custom plan.** Self-hosting Community with OCA modules was evaluated and rejected; do not propose it again unless the owner reopens it.
 - **Owner decisions 2026-09-20:** messaging is **email only, through Resend**; there is no SMS channel (the smsmode package and webhook were removed, inbound SMS arrive as pasted notes). The LLM is a **local Ollama instance** on the owner's GPU box (`AI_PROVIDER=ollama`); the Anthropic/Bedrock path stays available but is not the default. Production runs on the **owner's dedicated Debian server**; dev is the MacBook Pro.
 - Spec and research notes stay in French; code, commits and docs in English. Phase 0 (spec §21.1) runs on a neutralised Odoo duplicate, never the live base.
-- Owner questions and unverified vendor details are tracked in `docs/QUESTIONS.md`; a technology change is a tech-pack edit plus a spec history line.
+- The sequenced coding plan to go-live is `docs/PLAN.md` (slices 0–6, owner prerequisites P1–P8); owner questions and unverified vendor details are tracked in `docs/QUESTIONS.md`; a technology change is a tech-pack edit plus a spec history line.
 
 ## Verify
 
