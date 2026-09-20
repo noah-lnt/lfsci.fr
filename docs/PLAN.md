@@ -94,7 +94,7 @@ Slice 1 first, alone, because everything financial depends on it and it needs th
 
 | Slice | State | What remains |
 |---|---|---|
-| 0 | waiting on the owner | P1 to P8 are all still open; nothing here needed them to be coded |
+| 0 | waiting on the owner | P1 to P4 are parked: the owner runs the local Odoo 18 as the ledger for now and uses the SaaS alone (2026-09-20 evening); P5 to P8 still open |
 | 1 | coded, proven on the fake server and a local Odoo 18 | the run against the Online 19 duplicate (needs P1 to P4); the accountant's account codes, still defaults |
 | 2 | coded, every row from 2a to 2i | 2j only where a screen still reads a raw table; the Airbnb header names and the reminder delays need the owner |
 | 3 | coded except what needs the corpus | the evaluation set (item 1) and the Ollama-versus-Mistral comparison (item 4) wait for real documents and P5 |

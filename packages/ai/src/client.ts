@@ -21,10 +21,10 @@ import {
 export const DEFAULT_MODEL = "claude-opus-5";
 export const DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434";
 /** The owner's box runs a 32 GB RTX 5090: both defaults fit in VRAM at Q4. */
-export const DEFAULT_OLLAMA_MODEL_TEXT = "qwen3:32b";
+export const DEFAULT_OLLAMA_MODEL_TEXT = "qwen3.5:27b";
 export const DEFAULT_OLLAMA_MODEL_VISION = "qwen3.5:27b";
 /** Multilingual and 1024-dimensional, which is what `embedding.vector` stores (D-11). */
-export const DEFAULT_OLLAMA_MODEL_EMBED = "bge-m3";
+export const DEFAULT_OLLAMA_MODEL_EMBED = "bge-m3:567m";
 /** Fixed by migration 0001 (`vector(1024)`): another width is a column migration. */
 export const DEFAULT_EMBED_DIMENSIONS = 1024;
 export const DEFAULT_OLLAMA_TIMEOUT_MS = 120_000;
