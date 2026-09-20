@@ -1,0 +1,277 @@
+{
+  "assurances": {
+    "title": "Assurances",
+    "description": "Polices, garanties, attestations et échéances",
+    "empty": "Aucune police enregistrée.",
+    "all": "Toutes",
+    "backToList": "Retour aux polices",
+    "filters": {
+      "kind": "Filtrer par type",
+      "status": "Filtrer par statut",
+      "legalEntity": "SCI",
+      "building": "Immeuble",
+      "unit": "Lot"
+    },
+    "columns": {
+      "policy": "Police",
+      "kind": "Type",
+      "insurer": "Assureur",
+      "number": "N° de contrat",
+      "scope": "Biens couverts",
+      "period": "Période",
+      "premium": "Prime",
+      "deductible": "Franchise",
+      "certificate": "Attestation",
+      "claims": "Sinistres",
+      "status": "Statut"
+    },
+    "detail": {
+      "title": "Police d’assurance",
+      "insured": "Assuré",
+      "legalEntity": "SCI titulaire",
+      "insuredPerson": "Personne assurée",
+      "cover": "Garanties renseignées",
+      "exclusions": "Exclusions renseignées",
+      "premium": "Prime",
+      "periodicity": "Périodicité",
+      "deductible": "Franchise",
+      "startsOn": "Début de garantie",
+      "endsOn": "Fin de garantie",
+      "certificateCheckedAt": "Attestation contrôlée le",
+      "certificateMissing": "Aucune attestation rattachée.",
+      "deadlines": "Échéances de la police",
+      "noDeadline": "Aucune échéance ouverte.",
+      "documents": "Documents",
+      "scopes": "Biens couverts",
+      "noScope": "Aucun bien rattaché à cette police.",
+      "scopeEnd": "Fin de couverture",
+      "closeScope": "Clore la couverture",
+      "addScope": "Ajouter un bien couvert",
+      "scopeKind": "Nature du bien",
+      "scopeTarget": "Bien",
+      "scopeStartsOn": "Couvert à partir du",
+      "saved": "Police mise à jour.",
+      "scopeAdded": "Bien couvert ajouté.",
+      "scopeClosed": "Couverture close."
+    },
+    "form": {
+      "createTitle": "Créer une police",
+      "editTitle": "Modifier la police",
+      "kind": "Type de police",
+      "insurerName": "Assureur",
+      "policyNumber": "N° de contrat",
+      "legalEntity": "SCI titulaire",
+      "insuredPerson": "Personne assurée",
+      "startsOn": "Début de garantie",
+      "endsOn": "Fin de garantie",
+      "premiumAmount": "Prime",
+      "premiumPeriodicity": "Périodicité",
+      "deductibleAmount": "Franchise",
+      "guarantees": "Garanties renseignées",
+      "exclusions": "Exclusions renseignées",
+      "status": "Statut",
+      "submit": "Créer",
+      "save": "Enregistrer",
+      "submitting": "Enregistrement…",
+      "deadlineNote": "La fin de garantie crée l’échéance de renouvellement d’attestation ; il n’y a pas de second rappel."
+    },
+    "exceptions": {
+      "title": "Attestations manquantes ou expirées",
+      "empty": "Aucune exception : toutes les polices actives ont une attestation à jour.",
+      "columns": {
+        "policy": "Police",
+        "state": "Situation",
+        "endsOn": "Fin de garantie",
+        "scope": "Biens"
+      },
+      "act": "Traiter"
+    },
+    "attestations": {
+      "title": "Attestations reçues",
+      "tab": "Attestations à rattacher",
+      "empty": "Aucune attestation en attente de rattachement.",
+      "received": "Reçue le",
+      "extracted": "Champs extraits",
+      "proposal": "Rattachement proposé",
+      "matchedOn": "Concordances",
+      "conflicts": "Écarts",
+      "noProposal": "Aucune police ne correspond ; créez la police puis revenez.",
+      "uncertain": "Extraction incertaine : à vérifier avant rattachement.",
+      "notConfident": "Le numéro de contrat ne concorde pas : vérifiez avant de rattacher.",
+      "noDocument": "Cet élément ne porte aucun document : rien à rattacher.",
+      "checksTitle": "Contrôles avant clôture de l’alerte",
+      "checksHint": "L’alerte ne se clôt qu’après ces quatre contrôles.",
+      "checks": {
+        "identity": "Identité de l’assuré vérifiée",
+        "property": "Bien couvert vérifié",
+        "cover": "Couverture vérifiée",
+        "dates": "Dates de validité vérifiées"
+      },
+      "coverEndsOn": "Fin de garantie portée par l’attestation",
+      "attach": "Rattacher à cette police",
+      "attaching": "Rattachement…",
+      "attached": "Attestation rattachée ; l’alerte est close.",
+      "nextDeadline": "Prochaine échéance le {date}.",
+      "signals": {
+        "policy_number": "N° de contrat",
+        "insurer": "Assureur",
+        "insured_name": "Assuré",
+        "period": "Période"
+      },
+      "fields": {
+        "insurer": "Assureur",
+        "policyNumber": "N° de contrat",
+        "insuredName": "Assuré",
+        "address": "Adresse",
+        "validFrom": "Valide du",
+        "validTo": "Valide au",
+        "coverage": "Garanties"
+      }
+    },
+    "certificateState": {
+      "missing": "Manquante",
+      "expired": "Expirée",
+      "expiring": "Bientôt expirée",
+      "valid": "À jour"
+    },
+    "kind": {
+      "pno": "PNO",
+      "habitation": "Habitation",
+      "borrower": "Emprunteur",
+      "liability": "Responsabilité civile",
+      "works": "Chantier",
+      "multirisk": "Multirisque",
+      "other": "Autre"
+    },
+    "periodicity": {
+      "monthly": "Mensuelle",
+      "quarterly": "Trimestrielle",
+      "yearly": "Annuelle",
+      "single": "Prime unique"
+    },
+    "status": {
+      "draft": "Brouillon",
+      "active": "Active",
+      "expiring": "Bientôt échue",
+      "expired": "Expirée",
+      "cancelled": "Résiliée",
+      "to_verify": "À vérifier"
+    },
+    "scopeKind": {
+      "building": "Immeuble",
+      "unit": "Lot",
+      "equipment": "Équipement",
+      "lease": "Bail",
+      "loan": "Crédit"
+    }
+  },
+  "sinistres": {
+    "title": "Sinistres",
+    "description": "Faits, dépenses, indemnités et solde du sinistre",
+    "empty": "Aucun sinistre déclaré.",
+    "all": "Tous",
+    "new": "Déclarer un sinistre",
+    "openOnly": "Sinistres ouverts seulement",
+    "documents": "Documents du sinistre",
+    "filterStatus": "Filtrer par statut",
+    "columns": {
+      "reference": "Sinistre",
+      "occurredOn": "Survenu le",
+      "declaredOn": "Déclaré le",
+      "policy": "Police",
+      "unit": "Lot",
+      "cost": "Dépenses",
+      "indemnities": "Indemnités",
+      "remaining": "Reste à charge",
+      "status": "Statut"
+    },
+    "form": {
+      "createTitle": "Déclarer un sinistre",
+      "editTitle": "Modifier le sinistre",
+      "reference": "Référence interne",
+      "insurerClaimNumber": "N° de sinistre assureur",
+      "policy": "Police",
+      "building": "Immeuble",
+      "unit": "Lot touché",
+      "occurredOn": "Date des faits",
+      "declaredOn": "Date de déclaration",
+      "deadlineOn": "Échéance à tenir",
+      "facts": "Faits",
+      "nature": "Nature",
+      "allegedLiability": "Responsabilité alléguée",
+      "acknowledgedLiability": "Responsabilité reconnue",
+      "liabilityNote": "Ce qui est allégué et ce qui est reconnu restent deux champs distincts.",
+      "expertName": "Expert",
+      "expertVisitOn": "Visite d’expertise",
+      "estimatedDamage": "Dommage estimé",
+      "indemnityExpected": "Indemnité attendue",
+      "deductibleApplied": "Franchise appliquée",
+      "status": "Statut",
+      "submit": "Déclarer",
+      "save": "Enregistrer",
+      "submitting": "Enregistrement…",
+      "saved": "Sinistre mis à jour."
+    },
+    "balance": {
+      "title": "Rapprochement",
+      "grossCost": "Dépenses engagées",
+      "grossIndemnities": "Indemnités reçues",
+      "deductible": "Franchise",
+      "remaining": "Reste à charge",
+      "expected": "Indemnité attendue",
+      "stillExpected": "Encore attendu",
+      "note": "Les montants bruts restent affichés séparément : aucune compensation automatique entre réparations et indemnités."
+    },
+    "expenses": {
+      "title": "Dépenses rattachées",
+      "empty": "Aucune dépense rattachée : les dépenses arrivent par les interventions du sinistre.",
+      "columns": {
+        "supplier": "Fournisseur",
+        "issuedOn": "Date",
+        "intervention": "Intervention",
+        "amount": "Montant TTC",
+        "status": "Statut"
+      }
+    },
+    "interventions": {
+      "title": "Interventions du sinistre",
+      "empty": "Aucune intervention rattachée.",
+      "attach": "Rattacher une intervention",
+      "attaching": "Rattachement…",
+      "detach": "Détacher",
+      "pick": "Intervention",
+      "hint": "Une dépense rejoint le sinistre par l’intervention qui la porte.",
+      "linked": "Intervention rattachée.",
+      "unlinked": "Intervention détachée."
+    },
+    "indemnities": {
+      "title": "Indemnités reçues",
+      "empty": "Aucune indemnité enregistrée pour ce sinistre.",
+      "readOnlyTitle": "Saisie manuelle impossible",
+      "readOnly": "Une indemnité est un encaissement : elle est lue depuis la comptabilité, jamais saisie ici. Elle apparaîtra dès que le rapprochement bancaire Odoo l’aura remontée.",
+      "columns": {
+        "receivedOn": "Reçue le",
+        "kind": "Nature",
+        "amount": "Montant",
+        "payment": "Encaissement"
+      },
+      "kind": {
+        "advance": "Acompte",
+        "final": "Solde",
+        "complement": "Complément",
+        "recovery": "Recours",
+        "deductible": "Franchise retenue"
+      }
+    },
+    "status": {
+      "draft": "Brouillon",
+      "declared": "Déclaré",
+      "open": "Ouvert",
+      "expertise": "Expertise",
+      "settled": "Indemnisé",
+      "refused": "Refusé",
+      "closed": "Clos",
+      "litigation": "Contentieux"
+    }
+  }
+}
