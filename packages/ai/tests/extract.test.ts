@@ -1,17 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
-import { type AiConfig, createAiClient } from "../src/client";
+import { type AiConfigInput, createAiClient } from "../src/client";
 import { EXTRACTION_EFFORT, extractDocument, promptVersionFor } from "../src/extract";
 import { InboxIntentExtraction } from "../src/schemas/documents";
 import { fakeParseClient, parsedMessage } from "./fakes";
 
-const bedrockConfig: AiConfig = {
+const bedrockConfig: AiConfigInput = {
   AI_PROVIDER: "bedrock",
   AI_MODEL: "claude-opus-5",
   AWS_REGION: "eu-west-3",
 };
 
-const anthropicConfig: AiConfig = {
+const anthropicConfig: AiConfigInput = {
   AI_PROVIDER: "anthropic",
   AI_MODEL: "claude-opus-5",
   ANTHROPIC_API_KEY: "test-key",

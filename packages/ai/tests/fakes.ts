@@ -2,7 +2,11 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { ParsedMessage } from "@anthropic-ai/sdk";
 import type { BetaRunnableTool } from "@anthropic-ai/sdk/lib/tools/BetaRunnableTool";
 import type { BetaToolRunnerParams } from "@anthropic-ai/sdk/lib/tools/BetaToolRunner";
-import type { AiSdkClient, AssistantMessageStream, AssistantRunner } from "../src/client";
+import type {
+  AiSdkClient,
+  AssistantMessageStream,
+  AssistantRunner,
+} from "../src/providers/anthropic";
 
 export const usage = {
   input_tokens: 10,

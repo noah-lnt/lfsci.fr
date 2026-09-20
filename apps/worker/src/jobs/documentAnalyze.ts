@@ -152,7 +152,10 @@ export async function analyzeDocument(deps: Deps, data: DocumentAnalyzeData): Pr
   const extraction = await extractDocument(ai, {
     kind: data.kind as DocumentKind,
     ocrText,
-    ...(isPdf ? { pdfBase64: Buffer.from(bytes).toString("base64") } : {}),
+    // Only the Anthropic providers read a PDF natively; Ollama works from the OCR text alone.
+    ...(isPdf && ai.provider !== "ollama"
+      ? { pdfBase64: Buffer.from(bytes).toString("base64") }
+      : {}),
   });
 
   if (!extraction.ok) {
@@ -189,7 +192,7 @@ export async function analyzeDocument(deps: Deps, data: DocumentAnalyzeData): Pr
           evidenceExcerpt: field.evidence?.quote ?? null,
           evidencePage: field.evidence?.page ?? null,
           evidenceBbox: field.evidence?.bbox ?? null,
-          provider: "anthropic",
+          provider: ai.provider,
           modelName: extraction.modelId,
           promptVersion: extraction.promptVersion,
           decision: "pending" as const,

@@ -11,6 +11,10 @@ const optional = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
   z.string().trim().min(1).optional(),
 );
+const optionalProvider = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.enum(["ollama", "anthropic", "bedrock"]).optional(),
+);
 const shape = {
   DATABASE_URL: requiredString,
   DATABASE_ADMIN_URL: requiredString,
@@ -37,8 +41,14 @@ const shape = {
   RESEND_WEBHOOK_SECRET: optional,
   SMSMODE_API_KEY: optional,
   SMSMODE_SENDER: optional,
+  AI_PROVIDER: optionalProvider,
   ANTHROPIC_API_KEY: optional,
   AWS_ACCESS_KEY_ID: optional,
+  OLLAMA_BASE_URL: optional,
+  OLLAMA_MODEL_TEXT: optional,
+  OLLAMA_MODEL_VISION: optional,
+  OLLAMA_TIMEOUT_MS: optional,
+  OLLAMA_API_KEY: optional,
 
   TYPST_BINARY: optional,
   TEMPLATES_DIR: optional,
@@ -67,6 +77,7 @@ export function configuredVendors(env: WorkerEnv): Record<VendorName, boolean> {
     speech: Boolean(env.GLADIA_API_KEY),
     mail: Boolean(env.RESEND_API_KEY && env.RESEND_FROM && env.RESEND_WEBHOOK_SECRET),
     sms: Boolean(env.SMSMODE_API_KEY && env.SMSMODE_SENDER),
-    ai: Boolean(env.ANTHROPIC_API_KEY || env.AWS_ACCESS_KEY_ID),
+    ai:
+      env.AI_PROVIDER === "ollama" ? true : Boolean(env.ANTHROPIC_API_KEY || env.AWS_ACCESS_KEY_ID),
   };
 }

@@ -1,4 +1,4 @@
-import { type AiClient, createAiClient } from "@lfsci/ai";
+import { type AiClient, aiConfigFromEnv, createAiClient } from "@lfsci/ai";
 import { createDb, type DbHandle } from "@lfsci/db";
 import { createInboundReader, type InboundReader, mailConfigFromEnv } from "@lfsci/mail";
 import { createOcrClient, type OcrClient, ocrConfigFromEnv } from "@lfsci/ocr";
@@ -87,13 +87,7 @@ export function buildDeps(input: {
     storage: vendors.storage ? createStorage({ config: storageConfigFromEnv() }) : null,
     ocr: vendors.ocr ? createOcrClient({ config: ocrConfigFromEnv() }) : null,
     speech: vendors.speech ? createSpeechClient({ config: speechConfigFromEnv() }) : null,
-    ai: vendors.ai
-      ? createAiClient({
-          AI_PROVIDER: "bedrock",
-          AI_MODEL: "claude-opus-5",
-          AWS_REGION: process.env.AWS_REGION ?? "eu-west-3",
-        })
-      : null,
+    ai: vendors.ai ? createAiClient(aiConfigFromEnv()) : null,
     mail: vendors.mail ? createInboundReader({ config: mailConfigFromEnv() }) : null,
     insee: createInseeClient({ config: openDataConfigFromEnv() }),
   };

@@ -1,5 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { ErrorCode } from "@lfsci/contracts";
 import { currentRequestId } from "@lfsci/kernel";
 import type { z } from "zod";
@@ -10,6 +8,7 @@ import * as invoicePrompt from "./prompts/invoice";
 import * as leasePrompt from "./prompts/lease";
 import * as meterPhotoPrompt from "./prompts/meterPhoto";
 import * as receiptPrompt from "./prompts/receipt";
+import type { AiUsage, ExtractFailureReason } from "./provider";
 import { redactForModel } from "./redaction";
 import {
   AttestationExtraction,
@@ -56,13 +55,13 @@ export type ExtractSuccess<K extends DocumentKind> = {
   output: ExtractionOutput<K>;
   modelId: string;
   promptVersion: string;
-  usage: Anthropic.Usage;
+  usage: AiUsage;
   checks: ExtractionChecks | null;
 };
 
 export type ExtractFailure = {
   ok: false;
-  reason: "parse_failed" | "refusal" | "upstream";
+  reason: ExtractFailureReason;
   code: ErrorCode;
   requestId: string;
   upstreamRequestId: string | null;
@@ -70,24 +69,6 @@ export type ExtractFailure = {
 };
 
 export type ExtractResult<K extends DocumentKind> = ExtractSuccess<K> | ExtractFailure;
-
-function userContent(input: ExtractInput<DocumentKind>): Anthropic.ContentBlockParam[] {
-  const blocks: Anthropic.ContentBlockParam[] = [];
-  if (input.pdfBase64) {
-    blocks.push({
-      type: "document",
-      source: { type: "base64", media_type: "application/pdf", data: input.pdfBase64 },
-    });
-  }
-  for (const page of input.pages ?? []) {
-    blocks.push({
-      type: "image",
-      source: { type: "base64", media_type: "image/png", data: page.pngBase64 },
-    });
-  }
-  blocks.push({ type: "text", text: redactForModel(input.ocrText) });
-  return blocks;
-}
 
 function centsOf(amount: string | null): number | null {
   if (amount === null) return null;
@@ -128,48 +109,6 @@ export function checkTotals(output: WithTotals): ExtractionChecks | null {
   return { totalsConsistent: candidates.some((value) => Math.abs(value - sum) <= tolerance) };
 }
 
-function failureFromError(error: unknown, requestId: string): ExtractFailure {
-  const base = { ok: false as const, reason: "upstream" as const, requestId };
-  if (error instanceof Anthropic.RateLimitError) {
-    return {
-      ...base,
-      code: "QUOTA_EXCEEDED",
-      upstreamRequestId: error.requestID ?? null,
-      detail: error.message,
-    };
-  }
-  if (error instanceof Anthropic.AuthenticationError) {
-    return {
-      ...base,
-      code: "UPSTREAM_REJECTED",
-      upstreamRequestId: error.requestID ?? null,
-      detail: error.message,
-    };
-  }
-  if (error instanceof Anthropic.BadRequestError) {
-    return {
-      ...base,
-      code: "UPSTREAM_REJECTED",
-      upstreamRequestId: error.requestID ?? null,
-      detail: error.message,
-    };
-  }
-  if (error instanceof Anthropic.APIError) {
-    return {
-      ...base,
-      code: "UPSTREAM_UNAVAILABLE",
-      upstreamRequestId: error.requestID ?? null,
-      detail: error.message,
-    };
-  }
-  return {
-    ...base,
-    code: "INTERNAL",
-    upstreamRequestId: null,
-    detail: error instanceof Error ? error.message : String(error),
-  };
-}
-
 export async function extractDocument<K extends DocumentKind>(
   ai: AiClient,
   input: ExtractInput<K>,
@@ -178,33 +117,32 @@ export async function extractDocument<K extends DocumentKind>(
   const promptVersion = input.promptVersion ?? prompt.PROMPT_VERSION;
   const requestId = currentRequestId();
 
-  const params: Anthropic.MessageCreateParamsNonStreaming = {
-    model: ai.modelId,
-    max_tokens: EXTRACTION_MAX_TOKENS,
-    system: [{ type: "text", text: prompt.SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-    output_config: { effort: EXTRACTION_EFFORT, format: zodOutputFormat(schema) },
-    messages: [{ role: "user", content: userContent(input) }],
-  };
+  const result = await ai.extract({
+    system: prompt.SYSTEM_PROMPT,
+    userText: redactForModel(input.ocrText),
+    images: (input.pages ?? []).map((page) => ({
+      mediaType: "image/png",
+      base64: page.pngBase64,
+    })),
+    ...(input.pdfBase64 ? { pdfBase64: input.pdfBase64 } : {}),
+    schema,
+    maxTokens: EXTRACTION_MAX_TOKENS,
+    requestId,
+    effort: EXTRACTION_EFFORT,
+  });
 
-  let message: Awaited<ReturnType<AiClient["client"]["messages"]["parse"]>>;
-  try {
-    message = await ai.client.messages.parse(params);
-  } catch (error) {
-    return failureFromError(error, requestId);
-  }
-
-  if (message.stop_reason === "refusal") {
+  if (!result.ok) {
     return {
       ok: false,
-      reason: "refusal",
-      code: "UPSTREAM_REJECTED",
+      reason: result.reason,
+      code: result.code,
       requestId,
-      upstreamRequestId: null,
-      detail: message.stop_details?.explanation ?? "refusal",
+      upstreamRequestId: result.upstreamRequestId,
+      detail: result.detail,
     };
   }
 
-  const parsed = schema.safeParse(message.parsed_output);
+  const parsed = schema.safeParse(result.output);
   if (!parsed.success) {
     return {
       ok: false,
@@ -220,9 +158,9 @@ export async function extractDocument<K extends DocumentKind>(
   return {
     ok: true,
     output,
-    modelId: ai.modelId,
+    modelId: result.modelId,
     promptVersion,
-    usage: message.usage,
+    usage: result.usage,
     checks: hasTotals(input.kind) ? checkTotals(output as unknown as WithTotals) : null,
   };
 }

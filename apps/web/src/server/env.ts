@@ -18,6 +18,12 @@ const shape = {
   BETTER_AUTH_URL: z.url().default("http://localhost:3000"),
   ENCRYPTION_KEY: optional,
   SENTRY_DSN: optional,
+  AI_PROVIDER: z.enum(["ollama", "anthropic", "bedrock"]).default("ollama"),
+  OLLAMA_BASE_URL: optional,
+  OLLAMA_MODEL_TEXT: optional,
+  OLLAMA_MODEL_VISION: optional,
+  OLLAMA_TIMEOUT_MS: optional,
+  OLLAMA_API_KEY: optional,
 };
 
 export type Env = z.infer<z.ZodObject<typeof shape>>;

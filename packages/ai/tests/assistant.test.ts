@@ -1,15 +1,11 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it, vi } from "vitest";
-import {
-  ASSISTANT_EFFORT,
-  type AssistantEvent,
-  type AssistantPorts,
-  runAssistantTurn,
-} from "../src/assistant";
-import { type AiConfig, createAiClient } from "../src/client";
+import { ASSISTANT_EFFORT, type AssistantPorts, runAssistantTurn } from "../src/assistant";
+import { type AiConfigInput, createAiClient } from "../src/client";
+import type { AssistantEvent } from "../src/provider";
 import { fakeToolRunnerClient, textDelta, toolUseStart } from "./fakes";
 
-const bedrockConfig: AiConfig = {
+const bedrockConfig: AiConfigInput = {
   AI_PROVIDER: "bedrock",
   AI_MODEL: "claude-opus-5",
   AWS_REGION: "eu-west-3",
