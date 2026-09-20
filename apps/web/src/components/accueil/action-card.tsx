@@ -1,11 +1,10 @@
 "use client";
 
 import { ArrowRight, CircleAlert, Info, TriangleAlert } from "lucide-react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { DateValue } from "@/components/ui/date";
+import { LinkButton } from "@/components/ui/link-button";
 import type { ActionCard as Card } from "@/lib/contracts/accueil";
 
 const ICON = { critical: CircleAlert, warning: TriangleAlert, info: Info } as const;
@@ -49,10 +48,10 @@ export function ActionCardItem({ card }: { card: Card }) {
       </p>
 
       <div className="mt-3">
-        <Button variant="outline" size="sm" render={<Link href={card.proposedAction.href} />}>
+        <LinkButton href={card.proposedAction.href} variant="outline" size="sm">
           {card.proposedAction.label}
           <ArrowRight aria-hidden="true" />
-        </Button>
+        </LinkButton>
       </div>
     </li>
   );

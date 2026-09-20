@@ -1,4 +1,9 @@
-import { type DocumentKind, type Evidence, extractDocument } from "@lfsci/ai";
+import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { type DocumentKind, type Evidence, type ExtractPage, extractDocument } from "@lfsci/ai";
 import { tables, withTenant } from "@lfsci/db";
 import { AppError, logger } from "@lfsci/kernel";
 import { sniffContentType } from "@lfsci/storage";
@@ -13,6 +18,76 @@ const log = logger("job.document.analyze");
 
 export const MAX_IMAGE_EDGE = 2000;
 export const JPEG_QUALITY = 82;
+
+/** Caps the model payload: a 60-page lease would blow the context and the VRAM. */
+export const MAX_PDF_PAGES = 8;
+export const MAX_PAGE_EDGE = 1600;
+export const RASTER_TIMEOUT_MS = 20_000;
+export const PDFTOPPM_BINARY = "pdftoppm";
+
+/** Injectable so the job is testable without the binary, and swappable per image. */
+export type PageRenderer = (input: {
+  pdf: Uint8Array;
+  maxPages: number;
+  maxEdgePx: number;
+}) => Promise<ExtractPage[]>;
+
+function renderOnePage(file: string, page: number, maxEdgePx: number): Promise<Buffer> {
+  const args = [
+    "-jpeg",
+    "-jpegopt",
+    `quality=${JPEG_QUALITY}`,
+    "-scale-to",
+    String(maxEdgePx),
+    "-f",
+    String(page),
+    "-l",
+    String(page),
+    "-singlefile",
+    file,
+  ];
+  return new Promise((resolve, reject) => {
+    execFile(
+      PDFTOPPM_BINARY,
+      args,
+      {
+        encoding: "buffer",
+        maxBuffer: 32 * 1024 * 1024,
+        timeout: RASTER_TIMEOUT_MS,
+        killSignal: "SIGKILL",
+      },
+      (error, stdout) => (error ? reject(error) : resolve(stdout)),
+    );
+  });
+}
+
+/**
+ * poppler's `pdftoppm`, measured against `pdfjs-dist` + `@napi-rs/canvas` on an
+ * eight-page document (tech pack §"Rasterising PDF pages"). It reads a file, not
+ * stdin, and exits non-zero once the page number passes the last page.
+ */
+export const popplerRenderer: PageRenderer = async ({ pdf, maxPages, maxEdgePx }) => {
+  const dir = await mkdtemp(join(tmpdir(), "lfsci-raster-"));
+  const file = join(dir, "input.pdf");
+  try {
+    await writeFile(file, pdf);
+    const pages: ExtractPage[] = [];
+    for (let page = 1; page <= maxPages; page += 1) {
+      let jpeg: Buffer;
+      try {
+        jpeg = await renderOnePage(file, page, maxEdgePx);
+      } catch (error) {
+        if (page === 1) throw error;
+        break;
+      }
+      if (jpeg.length === 0) break;
+      pages.push({ base64: jpeg.toString("base64"), mediaType: "image/jpeg" });
+    }
+    return pages;
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+};
 
 export const DocumentAnalyzeData = JobBase.extend({
   organizationId: z.uuid(),
@@ -117,7 +192,28 @@ async function noteUnavailable(
   return { outcome: "sources_unavailable", missing };
 }
 
-export async function analyzeDocument(deps: Deps, data: DocumentAnalyzeData): Promise<JobOutcome> {
+/**
+ * Ollama reads page images, not PDF bytes. A rasterisation failure degrades to
+ * the OCR text the job already has rather than failing and burning its retries.
+ */
+export async function rasteriseForModel(
+  render: PageRenderer,
+  pdf: Uint8Array,
+): Promise<{ pages: ExtractPage[]; degraded: string | null }> {
+  try {
+    const pages = await render({ pdf, maxPages: MAX_PDF_PAGES, maxEdgePx: MAX_PAGE_EDGE });
+    if (pages.length === 0) return { pages, degraded: "renderer produced no page" };
+    return { pages, degraded: null };
+  } catch (error) {
+    return { pages: [], degraded: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+export async function analyzeDocument(
+  deps: Deps,
+  data: DocumentAnalyzeData,
+  render: PageRenderer = popplerRenderer,
+): Promise<JobOutcome> {
   const missing: string[] = [];
   if (!deps.storage) missing.push("storage");
   if (!deps.ocr) missing.push("ocr");
@@ -139,6 +235,16 @@ export async function analyzeDocument(deps: Deps, data: DocumentAnalyzeData): Pr
   if (!version) throw new AppError("NOT_FOUND", { details: { id: data.documentVersionId } });
 
   const raw = await download(deps, version.storageKey);
+  // The hash on the row came from the uploader; this is the first server-side
+  // read of the bytes, and it happens before any paid call.
+  const digest = createHash("sha256").update(raw).digest("hex");
+  if (digest !== version.sha256) {
+    throw new AppError("RULE_VIOLATION", {
+      message: "empreinte du fichier différente de celle enregistrée : analyse refusée",
+      details: { documentVersionId: data.documentVersionId, expected: version.sha256, digest },
+    });
+  }
+
   const sniffed = sniffContentType(raw);
   if (!sniffed) throw new AppError("UNSUPPORTED_MEDIA", { details: { key: version.storageKey } });
 
@@ -149,13 +255,23 @@ export async function analyzeDocument(deps: Deps, data: DocumentAnalyzeData): Pr
   const ocrResult = await ocr.ocrDocument({ bytes, contentType });
   const ocrText = ocrResult.pages.map((page) => page.markdown).join("\n\n");
 
+  // The Anthropic providers read a PDF natively; the local route needs page images.
+  const rasterise = isPdf && ai.provider === "ollama";
+  const rastered = rasterise
+    ? await rasteriseForModel(render, bytes)
+    : { pages: [] as ExtractPage[], degraded: null };
+  if (rastered.degraded) {
+    log.warn(
+      { documentVersionId: data.documentVersionId, reason: rastered.degraded },
+      "pdf rasterisation failed, falling back to the ocr text",
+    );
+  }
+
   const extraction = await extractDocument(ai, {
     kind: data.kind as DocumentKind,
     ocrText,
-    // Only the Anthropic providers read a PDF natively; Ollama works from the OCR text alone.
-    ...(isPdf && ai.provider !== "ollama"
-      ? { pdfBase64: Buffer.from(bytes).toString("base64") }
-      : {}),
+    ...(rastered.pages.length > 0 ? { pages: rastered.pages } : {}),
+    ...(isPdf && !rasterise ? { pdfBase64: Buffer.from(bytes).toString("base64") } : {}),
   });
 
   if (!extraction.ok) {
@@ -216,6 +332,8 @@ export async function analyzeDocument(deps: Deps, data: DocumentAnalyzeData): Pr
     outcome: "analyzed",
     fields: fields.length,
     pages: ocrResult.usage.pagesProcessed,
+    rasterisedPages: rastered.pages.length,
+    rasterisationDegraded: rastered.degraded,
     totalsConsistent: extraction.checks?.totalsConsistent ?? null,
   };
 }

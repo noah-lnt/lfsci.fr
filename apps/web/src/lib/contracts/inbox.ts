@@ -70,6 +70,46 @@ export type InboxDecisionResult = z.infer<typeof InboxDecisionResult>;
 export const AttachTarget = z.object({ object: ObjectRef, label: z.string() });
 export type AttachTarget = z.infer<typeof AttachTarget>;
 
+/** IA-06: what the proposal rests on — how many confirmations, when, on which pieces. */
+export const RuleProposalRow = z.object({
+  code: z.string(),
+  originKind: z.enum(["supplier", "meter", "bank_label"]),
+  originLabel: z.string(),
+  target: z.enum(["unit", "building_common", "entity_common"]),
+  targetLabel: z.string(),
+  category: z.string().nullable(),
+  recoverable: z.boolean(),
+  accountHint: z.string().nullable(),
+  confirmationCount: z.number().int(),
+  firstConfirmedOn: z.iso.date(),
+  lastConfirmedOn: z.iso.date(),
+  examples: z.array(z.object({ id: Uuid, label: z.string(), confirmedOn: z.iso.date() })),
+});
+export type RuleProposalRow = z.infer<typeof RuleProposalRow>;
+
+export const RuleProposalsResult = z.object({
+  items: z.array(RuleProposalRow),
+  minConfirmations: z.number().int(),
+  awaitingApproval: z.number().int(),
+  dismissed: z.number().int(),
+});
+export type RuleProposalsResult = z.infer<typeof RuleProposalsResult>;
+
+export const RuleProposalDecisionInput = z.object({
+  code: z.string().min(1).max(200),
+  decision: z.enum(["activate", "dismiss"]),
+  reason: z.string().min(1).max(500).optional(),
+});
+export type RuleProposalDecisionInput = z.infer<typeof RuleProposalDecisionInput>;
+
+export const RuleProposalDecisionResult = z.object({
+  /** Activating submits a command; it never activates the rule on its own. */
+  outcome: z.enum(["awaiting_approval", "dismissed"]),
+  code: z.string(),
+  commandId: Uuid.nullable(),
+});
+export type RuleProposalDecisionResult = z.infer<typeof RuleProposalDecisionResult>;
+
 export const inboxContract = {
   inbox: {
     list: oc
@@ -118,5 +158,12 @@ export const inboxContract = {
         }),
       )
       .output(InboxRow),
+    ruleProposals: oc
+      .route({ method: "GET", path: "/inbox/regles", summary: "Règles proposées" })
+      .output(RuleProposalsResult),
+    decideRuleProposal: oc
+      .route({ method: "POST", path: "/inbox/regles", summary: "Activer ou écarter une règle" })
+      .input(RuleProposalDecisionInput)
+      .output(RuleProposalDecisionResult),
   },
 };

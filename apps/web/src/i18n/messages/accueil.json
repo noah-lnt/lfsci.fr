@@ -25,7 +25,8 @@
       "partial": "Contrôles partiels",
       "sources_unavailable": "Sources indisponibles",
       "lastRun": "Dernière exécution",
-      "failed": "Contrôles en échec"
+      "failed": "Contrôles en échec",
+      "modelDown": "Modèle indisponible"
     },
     "indicators": {
       "title": "Situation",

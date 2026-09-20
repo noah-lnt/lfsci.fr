@@ -9,12 +9,17 @@
  * object per line. A tool answer goes back as `{role:"tool",tool_name,content}`.
  * An unknown model is HTTP 404 with `{"error":"model '<name>' not found"}`.
  * GET /api/tags lists installed models as `models[].{name,model,capabilities[]}`.
+ * POST /api/embed takes `model` and `input` (a string or an array of strings) and
+ * answers `{model, embeddings: number[][], prompt_eval_count}`, one row per input
+ * in the order sent. The embedding model and its dimension are not verified against
+ * a live instance here: `embed` refuses a row whose length is not the configured one.
  */
 import type { ErrorCode } from "@lfsci/contracts";
 import { AppError } from "@lfsci/kernel";
 import { z } from "zod";
 import {
   type AiProviderClient,
+  type EmbedResult,
   type ExtractStructuredResult,
   jsonSchemaOf,
   type ProviderTool,
@@ -27,6 +32,8 @@ export type OllamaProviderConfig = {
   baseUrl: string;
   modelText: string;
   modelVision: string;
+  modelEmbed: string;
+  embedDimensions: number;
   timeoutMs: number;
   apiKey?: string | undefined;
   fetchImpl?: FetchLike | undefined;
@@ -89,10 +96,10 @@ export function splitNdjson(buffer: string): { lines: string[]; rest: string } {
 export function createOllamaProvider(config: OllamaProviderConfig): AiProviderClient {
   const doFetch: FetchLike = config.fetchImpl ?? ((input, init) => fetch(input, init));
 
-  async function post(body: unknown): Promise<Response> {
+  async function post(path: string, body: unknown): Promise<Response> {
     let response: Response;
     try {
-      response = await doFetch(endpoint(config.baseUrl, "/api/chat"), {
+      response = await doFetch(endpoint(config.baseUrl, path), {
         method: "POST",
         headers: headers(config.apiKey),
         body: JSON.stringify(body),
@@ -153,7 +160,7 @@ export function createOllamaProvider(config: OllamaProviderConfig): AiProviderCl
 
       let chunk: OllamaChunk;
       try {
-        const response = await post({
+        const response = await post("/api/chat", {
           model,
           messages: [{ role: "system", content: input.system }, user],
           format: jsonSchemaOf(input.schema, "output"),
@@ -191,6 +198,75 @@ export function createOllamaProvider(config: OllamaProviderConfig): AiProviderCl
       };
     },
 
+    async embed(input): Promise<EmbedResult> {
+      if (input.texts.length === 0) {
+        return {
+          ok: true,
+          vectors: [],
+          modelId: config.modelEmbed,
+          dimensions: config.embedDimensions,
+          usage: { inputTokens: null, outputTokens: null },
+        };
+      }
+
+      let body: { embeddings?: unknown; prompt_eval_count?: number };
+      try {
+        const response = await post("/api/embed", {
+          model: config.modelEmbed,
+          input: input.texts,
+        });
+        body = (await response.json()) as typeof body;
+      } catch (error) {
+        return {
+          ok: false,
+          reason: "upstream",
+          code: error instanceof AppError ? error.code : "INTERNAL",
+          detail: error instanceof Error ? error.message : String(error),
+        };
+      }
+
+      const rows = Array.isArray(body.embeddings) ? body.embeddings : [];
+      const vectors: number[][] = [];
+      for (const row of rows) {
+        if (!Array.isArray(row) || row.some((value) => typeof value !== "number")) {
+          return {
+            ok: false,
+            reason: "upstream",
+            code: "UPSTREAM_REJECTED",
+            detail: "ollama returned a non-numeric embedding",
+          };
+        }
+        vectors.push(row as number[]);
+      }
+
+      if (vectors.length !== input.texts.length) {
+        return {
+          ok: false,
+          reason: "upstream",
+          code: "UPSTREAM_REJECTED",
+          detail: `expected ${input.texts.length} embeddings, received ${vectors.length}`,
+        };
+      }
+
+      const wrong = vectors.find((vector) => vector.length !== config.embedDimensions);
+      if (wrong) {
+        return {
+          ok: false,
+          reason: "dimension_mismatch",
+          code: "UPSTREAM_REJECTED",
+          detail: `${config.modelEmbed} returned ${wrong.length} dimensions, the column stores ${config.embedDimensions}`,
+        };
+      }
+
+      return {
+        ok: true,
+        vectors,
+        modelId: config.modelEmbed,
+        dimensions: config.embedDimensions,
+        usage: { inputTokens: body.prompt_eval_count ?? null, outputTokens: null },
+      };
+    },
+
     async runToolLoop(input): Promise<RunToolLoopResult> {
       const byName = new Map(input.tools.map((tool) => [tool.name, tool]));
       const messages: OllamaMessage[] = [
@@ -201,7 +277,7 @@ export function createOllamaProvider(config: OllamaProviderConfig): AiProviderCl
       let stopReason: string | null = null;
 
       for (let turn = 0; turn < input.maxTurns; turn += 1) {
-        const response = await post({
+        const response = await post("/api/chat", {
           model: config.modelText,
           messages,
           tools: toolsPayload(input.tools),
@@ -290,12 +366,17 @@ export function createOllamaProvider(config: OllamaProviderConfig): AiProviderCl
 /** Boot never probes the network; health and /readyz call this explicitly. */
 export async function checkOllama(
   config: Pick<OllamaProviderConfig, "baseUrl" | "modelText" | "modelVision" | "apiKey"> & {
+    modelEmbed?: string | undefined;
     fetchImpl?: FetchLike | undefined;
     timeoutMs?: number | undefined;
   },
 ): Promise<OllamaHealth> {
   const doFetch: FetchLike = config.fetchImpl ?? ((input, init) => fetch(input, init));
-  const wanted = [config.modelText, config.modelVision];
+  const wanted = [
+    config.modelText,
+    config.modelVision,
+    ...(config.modelEmbed ? [config.modelEmbed] : []),
+  ];
   try {
     const response = await doFetch(endpoint(config.baseUrl, "/api/tags"), {
       headers: headers(config.apiKey),

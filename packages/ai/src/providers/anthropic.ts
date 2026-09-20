@@ -9,6 +9,7 @@ import type { ErrorCode } from "@lfsci/contracts";
 import { AppError } from "@lfsci/kernel";
 import type {
   AiProviderClient,
+  EmbedResult,
   ExtractStructuredInput,
   ExtractStructuredResult,
   RunToolLoopInput,
@@ -184,6 +185,16 @@ export function createAnthropicProvider(
           inputTokens: message.usage?.input_tokens ?? null,
           outputTokens: message.usage?.output_tokens ?? null,
         },
+      };
+    },
+
+    /** Anthropic ships no embeddings endpoint; the caller keeps the text index and retries later. */
+    async embed(): Promise<EmbedResult> {
+      return {
+        ok: false,
+        reason: "unsupported",
+        code: "UNSUPPORTED_MEDIA",
+        detail: `the ${config.provider} route has no embeddings endpoint`,
       };
     },
 

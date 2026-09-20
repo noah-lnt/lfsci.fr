@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { errorPayload, rpc } from "@/lib/rpc";
 import { CaptureForm } from "./capture-form";
 import { InboxDetail } from "./inbox-detail";
+import { RuleProposals } from "./rule-proposals";
 
 export function InboxView() {
   const t = useTranslations("inbox");
@@ -34,6 +35,8 @@ export function InboxView() {
   return (
     <div className="space-y-4">
       <CaptureForm />
+
+      <RuleProposals />
 
       {list.error ? <ErrorBox error={errorPayload(list.error)} /> : null}
 

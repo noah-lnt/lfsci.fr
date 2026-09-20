@@ -29,6 +29,36 @@
     "captureTextPlaceholder": "Collez le SMS ou saisissez la note…",
     "captureSubmit": "Enregistrer dans l’inbox",
     "captured": "Note enregistrée dans l’inbox.",
+    "proposals": {
+      "title": "Règles proposées",
+      "hint": "Une même origine affectée de la même façon {count} fois ou plus donne lieu à une proposition de règle. Rien n’est appliqué sans votre validation.",
+      "empty": "Aucune règle proposée : aucune affectation ne s’est encore répétée à l’identique.",
+      "basis": "{count} confirmation(s) du {from} au {to}",
+      "origin": {
+        "supplier": "Fournisseur",
+        "meter": "Compteur",
+        "bank_label": "Libellé bancaire"
+      },
+      "effect": "Affecter à",
+      "target": {
+        "unit": "Lot",
+        "building_common": "Partie commune d’immeuble",
+        "entity_common": "Partie commune de la SCI"
+      },
+      "category": "Catégorie",
+      "recoverable": "Récupérable",
+      "notRecoverable": "Non récupérable",
+      "accountHint": "Compte proposé",
+      "examples": "Exemples à l’appui",
+      "activate": "Activer la règle",
+      "activateHint": "Soumet une validation : la règle reste inactive tant que vous ne l’avez pas approuvée.",
+      "dismiss": "Écarter",
+      "submitted": "Règle soumise à validation.",
+      "dismissed": "Proposition écartée.",
+      "awaitingApproval": "{count} règle(s) en attente de validation",
+      "seeValidations": "Voir les validations",
+      "dismissedCount": "{count} proposition(s) écartée(s)"
+    },
     "status": {
       "received": "Reçu",
       "analyzed": "Analysé",

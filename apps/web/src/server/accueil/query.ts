@@ -3,6 +3,7 @@ import type { Tx } from "@lfsci/db";
 import { sql } from "drizzle-orm";
 import type { AmountIndicator, OccupancyIndicator, SituationResult } from "@/lib/contracts/accueil";
 import { tenant } from "../data";
+import { modelStatus } from "../rpc/modules/health";
 import { buildBanner } from "./banner";
 import type {
   CardSource,
@@ -267,6 +268,8 @@ async function occupancy(tx: Tx): Promise<OccupancyIndicator | null> {
 }
 
 export async function loadSituation(scope: TenantScope): Promise<SituationResult> {
+  // Probed outside the transaction: it can reach the network, a transaction must not wait on it.
+  const model = await modelStatus();
   return tenant(scope, async (tx) => {
     const report = await rows<{ occurred_at: string; payload: unknown }>(
       tx,
@@ -277,6 +280,7 @@ export async function loadSituation(scope: TenantScope): Promise<SituationResult
 
     return {
       banner: buildBanner(last ? { occurredAt: last.occurred_at, payload: last.payload } : null),
+      model,
       indicators: {
         occupancy: await occupancy(tx),
         collectedThisMonth: await amount(

@@ -2,10 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Camera } from "lucide-react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ErrorBox } from "@/components/feedback/error-box";
-import { Button } from "@/components/ui/button";
+import { LinkButton } from "@/components/ui/link-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorPayload, rpc } from "@/lib/rpc";
 import { ActionCardItem } from "./action-card";
@@ -33,16 +32,16 @@ export function HomeView() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-end gap-2">
         {/* ux.md: the capture stays in the page flow, never floating; the assistant lives in the header. */}
-        <Button render={<Link href="/inbox?capture=1" />}>
+        <LinkButton href="/inbox?capture=1">
           <Camera aria-hidden="true" />
           {common("capture")}
-        </Button>
+        </LinkButton>
       </div>
 
       {failed ? <ErrorBox error={errorPayload(failed)} /> : null}
 
       {situation.data ? (
-        <SituationBanner banner={situation.data.banner} />
+        <SituationBanner banner={situation.data.banner} model={situation.data.model} />
       ) : (
         <Skeleton className="h-16 w-full rounded-xl" />
       )}

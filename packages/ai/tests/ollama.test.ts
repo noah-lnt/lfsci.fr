@@ -56,7 +56,7 @@ describe("ollama extraction request shape", () => {
     await extractDocument(ai, {
       kind: "receipt",
       ocrText: "TOTAL 2,40",
-      pages: [{ pngBase64: "iVBORw0=" }],
+      pages: [{ base64: "iVBORw0=", mediaType: "image/png" }],
     });
 
     const body = calls[0]?.body as { model: string; messages: { images?: string[] }[] };
@@ -316,5 +316,110 @@ describe("checkOllama", () => {
     });
     expect(health.reachable).toBe(false);
     expect(health.missing).toEqual(["qwen3:32b", "qwen3.5:27b"]);
+  });
+});
+
+describe("ollama embeddings", () => {
+  const embedConfig: AiConfigInput = { ...ollamaConfig, OLLAMA_MODEL_EMBED: "bge-m3" };
+
+  function vector(length: number): number[] {
+    return Array.from({ length }, (_, index) => index / length);
+  }
+
+  it("posts every text in one /api/embed call and returns the vectors in order", async () => {
+    const { fetchImpl, calls } = fakeFetch([
+      {
+        kind: "json",
+        body: { model: "bge-m3", embeddings: [vector(1024), vector(1024)], prompt_eval_count: 12 },
+      },
+    ]);
+    const ai = createAiClient(embedConfig, undefined, fetchImpl);
+    const result = await ai.embed({
+      texts: ["bail du lot A", "quittance de mars"],
+      requestId: "r",
+    });
+
+    expect(calls[0]?.url).toBe("http://127.0.0.1:11434/api/embed");
+    expect(calls[0]?.body).toMatchObject({
+      model: "bge-m3",
+      input: ["bail du lot A", "quittance de mars"],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.vectors).toHaveLength(2);
+    expect(result.dimensions).toBe(1024);
+    expect(result.modelId).toBe("bge-m3");
+    expect(result.usage.inputTokens).toBe(12);
+  });
+
+  it("refuses a vector of the wrong width instead of truncating it", async () => {
+    const { fetchImpl } = fakeFetch([
+      { kind: "json", body: { model: "bge-m3", embeddings: [vector(768)] } },
+    ]);
+    const ai = createAiClient(embedConfig, undefined, fetchImpl);
+    const result = await ai.embed({ texts: ["un texte"], requestId: "r" });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe("dimension_mismatch");
+    expect(result.detail).toContain("768");
+  });
+
+  it("refuses a row count that does not match the inputs", async () => {
+    const { fetchImpl } = fakeFetch([
+      { kind: "json", body: { model: "bge-m3", embeddings: [vector(1024)] } },
+    ]);
+    const ai = createAiClient(embedConfig, undefined, fetchImpl);
+    const result = await ai.embed({ texts: ["a", "b"], requestId: "r" });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe("upstream");
+  });
+
+  it("reports an unreachable instance as upstream, never throwing", async () => {
+    const { fetchImpl } = fakeFetch([{ kind: "throw", error: new TypeError("fetch failed") }]);
+    const ai = createAiClient(embedConfig, undefined, fetchImpl);
+    const result = await ai.embed({ texts: ["a"], requestId: "r" });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe("upstream");
+    expect(result.code).toBe("UPSTREAM_UNAVAILABLE");
+  });
+
+  it("does not call the instance at all for an empty batch", async () => {
+    const { fetchImpl, calls } = fakeFetch([]);
+    const ai = createAiClient(embedConfig, undefined, fetchImpl);
+    const result = await ai.embed({ texts: [], requestId: "r" });
+
+    expect(calls).toHaveLength(0);
+    expect(result.ok).toBe(true);
+  });
+
+  it("adds the embedding model to the health check's missing list", async () => {
+    const { fetchImpl } = fakeFetch([
+      { kind: "json", body: { models: [{ model: "qwen3:32b" }, { model: "qwen3.5:27b" }] } },
+    ]);
+    const health = await checkOllama({
+      baseUrl: "http://127.0.0.1:11434",
+      modelText: "qwen3:32b",
+      modelVision: "qwen3.5:27b",
+      modelEmbed: "bge-m3",
+      fetchImpl,
+    });
+    expect(health.missing).toEqual(["bge-m3"]);
+  });
+});
+
+describe("the anthropic route has no embeddings", () => {
+  it("answers `unsupported` rather than throwing", async () => {
+    const ai = createAiClient({ AI_PROVIDER: "anthropic", ANTHROPIC_API_KEY: "sk-test" });
+    const result = await ai.embed({ texts: ["a"], requestId: "r" });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe("unsupported");
+    expect(result.code).toBe("UNSUPPORTED_MEDIA");
   });
 });

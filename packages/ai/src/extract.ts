@@ -42,10 +42,13 @@ export function promptVersionFor(kind: DocumentKind): string {
 
 export type ExtractionChecks = { totalsConsistent: boolean };
 
+/** A rasterised page, in whichever encoding the renderer produced. */
+export type ExtractPage = { base64: string; mediaType: "image/png" | "image/jpeg" };
+
 export type ExtractInput<K extends DocumentKind> = {
   kind: K;
   ocrText: string;
-  pages?: { pngBase64: string }[];
+  pages?: ExtractPage[];
   pdfBase64?: string;
   promptVersion?: string;
 };
@@ -121,8 +124,8 @@ export async function extractDocument<K extends DocumentKind>(
     system: prompt.SYSTEM_PROMPT,
     userText: redactForModel(input.ocrText),
     images: (input.pages ?? []).map((page) => ({
-      mediaType: "image/png",
-      base64: page.pngBase64,
+      mediaType: page.mediaType,
+      base64: page.base64,
     })),
     ...(input.pdfBase64 ? { pdfBase64: input.pdfBase64 } : {}),
     schema,
