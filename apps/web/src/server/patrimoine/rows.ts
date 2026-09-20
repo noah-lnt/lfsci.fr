@@ -100,6 +100,13 @@ export function toLegalEntity(row: LegalEntityRow): LegalEntity {
     fiscalYearEndDay: row.fiscalYearEndDay,
     odooCompanyId: row.odooCompanyId,
     currency: row.currency,
+    addressLine1: row.addressLine1,
+    addressLine2: row.addressLine2,
+    postalCode: row.postalCode,
+    city: row.city,
+    country: row.country,
+    contactEmail: row.contactEmail,
+    contactPhone: row.contactPhone,
     status: row.status as LegalEntity["status"],
   };
 }

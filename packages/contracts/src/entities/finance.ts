@@ -5,6 +5,7 @@ import {
   FixedAssetMethod,
   FixedAssetStatus,
   LoanInstallmentStatus,
+  LoanInsuranceBasis,
   LoanRateKind,
   LoanStatus,
   PartnerCurrentAccountStatus,
@@ -47,6 +48,7 @@ export const Loan = Audited.extend({
   bankAccountId: Uuid.nullable(),
   odooOutstandingPrincipal: Money.nullable(),
   odooReadAt: IsoDateTime.nullable(),
+  insuranceBasis: LoanInsuranceBasis,
   status: LoanStatus,
 });
 export type Loan = z.infer<typeof Loan>;

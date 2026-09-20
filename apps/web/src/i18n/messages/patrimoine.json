@@ -68,7 +68,13 @@
       "fiscalYearEndDay": "Jour de clôture",
       "status": "État",
       "currency": "Devise",
-      "created": "SCI enregistrée."
+      "created": "SCI enregistrée.",
+      "addressLine1": "Adresse",
+      "addressLine2": "Complément d’adresse",
+      "postalCode": "Code postal",
+      "city": "Ville",
+      "contactEmail": "Courriel de contact",
+      "contactPhone": "Téléphone de contact"
     },
     "building": {
       "one": "Immeuble",

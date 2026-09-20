@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { legalEntity, bankAccount, organization, building, unitDiagnostic, unit, document, contactPoint, person, appUser, aiExtraction, inboxItem, ruleVersion, activity, documentVersion, objectRef, auditLog, approval, command, equipment, assetComponent, fixedAsset, acquisitionOpportunity, acquisitionScenario, activityLink, bankTransaction, booking, listing, bookingMovement, ccaMovement, partnerCurrentAccount, expense, payment, chargeAllocationKey, chargeAllocationKeyVersion, chargeAllocationShare, claim, lease, insurancePolicy, claimIndemnity, externalRef, commandAttempt, deadline, event, deadlineLink, depositAccount, depositMovement, rentTerm, documentLink, embedding, supplier, equipmentAssignment, eventLink, intervention, worksProject, expenseAllocation, expenseLine, guarantee, inspection, inspectionFinding, integrationCursor, internalTransfer, inventoryItem, leaseParty, leaseUnit, leaseVersion, loan, loanInstallment, loanScheduleVersion, loanProperty, membership, messageOutbound, meter, meterReading, meterConsumption, meterServicePeriod, outboxEntry, paymentAllocation, payout, payoutDetail, personRole, policyScope, provisionRegularizationLine, provisionRegularizationRun, rentReceipt, rentRevision, rentTermVersion, rule, searchDocument, unitLineage, unitUsagePeriod, authUser, authSession, authAccount, authOrganization, authMember, authInvitation, authTwoFactor, integrationExchange } from "./schema";
+import { legalEntity, bankAccount, organization, building, unitDiagnostic, unit, document, contactPoint, person, appUser, aiExtraction, inboxItem, ruleVersion, activity, documentVersion, objectRef, auditLog, approval, command, equipment, assetComponent, fixedAsset, acquisitionOpportunity, acquisitionScenario, activityLink, bankTransaction, booking, listing, bookingMovement, ccaMovement, partnerCurrentAccount, expense, payment, chargeAllocationKey, chargeAllocationKeyVersion, chargeAllocationShare, claim, lease, insurancePolicy, claimIndemnity, externalRef, commandAttempt, deadline, event, deadlineLink, depositAccount, depositMovement, rentTerm, documentLink, embedding, supplier, equipmentAssignment, eventLink, intervention, worksProject, expenseAllocation, expenseLine, guarantee, inspection, inspectionFinding, integrationCursor, internalTransfer, inventoryItem, leaseParty, leaseUnit, loan, leaseVersion, loanInstallment, loanScheduleVersion, outboxEntry, messageOutbound, loanProperty, membership, meter, meterReading, meterConsumption, meterServicePeriod, paymentAllocation, payout, payoutDetail, personRole, policyScope, provisionRegularizationLine, provisionRegularizationRun, rentReceipt, rentRevision, rentTermVersion, rule, searchDocument, unitLineage, unitUsagePeriod, authUser, authSession, authAccount, authOrganization, authMember, authInvitation, authTwoFactor, integrationExchange } from "./schema";
 
 export const bankAccountRelations = relations(bankAccount, ({one, many}) => ({
 	legalEntity: one(legalEntity, {
@@ -32,7 +32,6 @@ export const legalEntityRelations = relations(legalEntity, ({one, many}) => ({
 	guarantees: many(guarantee),
 	insurancePolicies: many(insurancePolicy),
 	internalTransfers: many(internalTransfer),
-	leases: many(lease),
 	appUser: one(appUser, {
 		fields: [legalEntity.fiscalQualificationValidatedBy],
 		references: [appUser.id]
@@ -41,6 +40,7 @@ export const legalEntityRelations = relations(legalEntity, ({one, many}) => ({
 		fields: [legalEntity.organizationId],
 		references: [organization.id]
 	}),
+	leases: many(lease),
 	loans: many(loan),
 	objectRefs: many(objectRef),
 	partnerCurrentAccounts: many(partnerCurrentAccount),
@@ -101,14 +101,15 @@ export const organizationRelations = relations(organization, ({many}) => ({
 	internalTransfers: many(internalTransfer),
 	interventions: many(intervention),
 	inventoryItems: many(inventoryItem),
+	legalEntities: many(legalEntity),
 	leases: many(lease),
 	leaseParties: many(leaseParty),
 	leaseUnits: many(leaseUnit),
-	leaseVersions: many(leaseVersion),
-	legalEntities: many(legalEntity),
-	listings: many(listing),
 	loans: many(loan),
+	leaseVersions: many(leaseVersion),
+	listings: many(listing),
 	loanInstallments: many(loanInstallment),
+	outboxEntries: many(outboxEntry),
 	loanProperties: many(loanProperty),
 	loanScheduleVersions: many(loanScheduleVersion),
 	memberships: many(membership),
@@ -118,7 +119,6 @@ export const organizationRelations = relations(organization, ({many}) => ({
 	meterReadings: many(meterReading),
 	meterServicePeriods: many(meterServicePeriod),
 	objectRefs: many(objectRef),
-	outboxEntries: many(outboxEntry),
 	partnerCurrentAccounts: many(partnerCurrentAccount),
 	payments: many(payment),
 	paymentAllocations: many(paymentAllocation),
@@ -1631,22 +1631,6 @@ export const leaseUnitRelations = relations(leaseUnit, ({one}) => ({
 	}),
 }));
 
-export const leaseVersionRelations = relations(leaseVersion, ({one, many}) => ({
-	document: one(document, {
-		fields: [leaseVersion.signedDocumentId],
-		references: [document.id]
-	}),
-	lease: one(lease, {
-		fields: [leaseVersion.leaseId],
-		references: [lease.id]
-	}),
-	organization: one(organization, {
-		fields: [leaseVersion.organizationId],
-		references: [organization.id]
-	}),
-	rentTermVersions: many(rentTermVersion),
-}));
-
 export const loanRelations = relations(loan, ({one, many}) => ({
 	bankAccount: one(bankAccount, {
 		fields: [loan.bankAccountId],
@@ -1664,6 +1648,22 @@ export const loanRelations = relations(loan, ({one, many}) => ({
 	loanScheduleVersions: many(loanScheduleVersion),
 	objectRefs: many(objectRef),
 	policyScopes: many(policyScope),
+}));
+
+export const leaseVersionRelations = relations(leaseVersion, ({one, many}) => ({
+	document: one(document, {
+		fields: [leaseVersion.signedDocumentId],
+		references: [document.id]
+	}),
+	lease: one(lease, {
+		fields: [leaseVersion.leaseId],
+		references: [lease.id]
+	}),
+	organization: one(organization, {
+		fields: [leaseVersion.organizationId],
+		references: [organization.id]
+	}),
+	rentTermVersions: many(rentTermVersion),
 }));
 
 export const loanInstallmentRelations = relations(loanInstallment, ({one}) => ({
@@ -1697,6 +1697,45 @@ export const loanScheduleVersionRelations = relations(loanScheduleVersion, ({one
 	}),
 }));
 
+export const outboxEntryRelations = relations(outboxEntry, ({one}) => ({
+	command: one(command, {
+		fields: [outboxEntry.commandId],
+		references: [command.id]
+	}),
+	messageOutbound: one(messageOutbound, {
+		fields: [outboxEntry.messageOutboundId],
+		references: [messageOutbound.id]
+	}),
+	organization: one(organization, {
+		fields: [outboxEntry.organizationId],
+		references: [organization.id]
+	}),
+}));
+
+export const messageOutboundRelations = relations(messageOutbound, ({one, many}) => ({
+	outboxEntries: many(outboxEntry),
+	approval: one(approval, {
+		fields: [messageOutbound.approvalId],
+		references: [approval.id]
+	}),
+	organization: one(organization, {
+		fields: [messageOutbound.organizationId],
+		references: [organization.id]
+	}),
+	contactPoint: one(contactPoint, {
+		fields: [messageOutbound.recipientContactPointId],
+		references: [contactPoint.id]
+	}),
+	person: one(person, {
+		fields: [messageOutbound.recipientPersonId],
+		references: [person.id]
+	}),
+	objectRef: one(objectRef, {
+		fields: [messageOutbound.relatedObjectRefId],
+		references: [objectRef.id]
+	}),
+}));
+
 export const loanPropertyRelations = relations(loanProperty, ({one}) => ({
 	building: one(building, {
 		fields: [loanProperty.buildingId],
@@ -1725,30 +1764,6 @@ export const membershipRelations = relations(membership, ({one}) => ({
 		fields: [membership.organizationId],
 		references: [organization.id]
 	}),
-}));
-
-export const messageOutboundRelations = relations(messageOutbound, ({one, many}) => ({
-	approval: one(approval, {
-		fields: [messageOutbound.approvalId],
-		references: [approval.id]
-	}),
-	organization: one(organization, {
-		fields: [messageOutbound.organizationId],
-		references: [organization.id]
-	}),
-	contactPoint: one(contactPoint, {
-		fields: [messageOutbound.recipientContactPointId],
-		references: [contactPoint.id]
-	}),
-	person: one(person, {
-		fields: [messageOutbound.recipientPersonId],
-		references: [person.id]
-	}),
-	objectRef: one(objectRef, {
-		fields: [messageOutbound.relatedObjectRefId],
-		references: [objectRef.id]
-	}),
-	outboxEntries: many(outboxEntry),
 }));
 
 export const meterRelations = relations(meter, ({one, many}) => ({
@@ -1840,21 +1855,6 @@ export const meterServicePeriodRelations = relations(meterServicePeriod, ({one})
 	unit: one(unit, {
 		fields: [meterServicePeriod.unitId],
 		references: [unit.id]
-	}),
-}));
-
-export const outboxEntryRelations = relations(outboxEntry, ({one}) => ({
-	command: one(command, {
-		fields: [outboxEntry.commandId],
-		references: [command.id]
-	}),
-	messageOutbound: one(messageOutbound, {
-		fields: [outboxEntry.messageOutboundId],
-		references: [messageOutbound.id]
-	}),
-	organization: one(organization, {
-		fields: [outboxEntry.organizationId],
-		references: [organization.id]
 	}),
 }));
 

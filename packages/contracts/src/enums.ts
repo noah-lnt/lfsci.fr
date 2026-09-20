@@ -510,6 +510,23 @@ export type LoanRateKind = z.infer<typeof LoanRateKind>;
 export const LoanStatus = z.enum(["draft", "active", "renegotiated", "repaid", "cancelled"]);
 export type LoanStatus = z.infer<typeof LoanStatus>;
 
+export const LoanInsuranceBasis = z.enum(["initial_principal", "outstanding_principal"]);
+export type LoanInsuranceBasis = z.infer<typeof LoanInsuranceBasis>;
+
+export const IntegrationExchangeDirection = z.enum(["inbound", "outbound"]);
+export type IntegrationExchangeDirection = z.infer<typeof IntegrationExchangeDirection>;
+
+export const IntegrationExchangeStatus = z.enum([
+  "pending",
+  "success",
+  "client_error",
+  "server_error",
+  "timeout",
+  "rejected",
+  "unknown",
+]);
+export type IntegrationExchangeStatus = z.infer<typeof IntegrationExchangeStatus>;
+
 export const LoanScheduleVersionReason = z.enum([
   "initial",
   "renegotiation",
@@ -978,6 +995,9 @@ export const sqlEnums = {
   "legal_entity.vat_status": LegalEntityVatStatus,
   "legal_entity.e_invoicing_channel": LegalEntityEInvoicingChannel,
   "legal_entity.status": LegalEntityStatus,
+  "loan.insurance_basis": LoanInsuranceBasis,
+  "integration_exchange.direction": IntegrationExchangeDirection,
+  "integration_exchange.status": IntegrationExchangeStatus,
   "bank_account.purpose": BankAccountPurpose,
   "bank_account.feed_source": BankAccountFeedSource,
   "bank_account.status": BankAccountStatus,

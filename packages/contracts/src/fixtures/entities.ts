@@ -42,6 +42,13 @@ export const legalEntityFixture: E.LegalEntity = {
   fiscalYearEndDay: 31,
   odooCompanyId: 1,
   currency: "EUR",
+  addressLine1: "12 rue de l’Exemple",
+  addressLine2: null,
+  postalCode: "31000",
+  city: "Toulouse",
+  country: "FR",
+  contactEmail: null,
+  contactPhone: null,
   status: "active",
 };
 
@@ -70,6 +77,9 @@ export const bankAccountFixture: E.BankAccount = {
   openingBalanceOn: "2026-01-01",
   feedSource: "odoo_bank_sync",
   feedLastSuccessAt: "2026-02-03T06:00:00+01:00",
+  odooBalance: "13120.40",
+  odooBalanceOn: "2026-02-02",
+  odooReadAt: "2026-02-03T06:00:00+01:00",
   status: "active",
 };
 
@@ -598,6 +608,7 @@ export const loanFixture: E.Loan = {
   bankAccountId: ids.bankAccount,
   odooOutstandingPrincipal: "98450.12",
   odooReadAt: "2026-03-01T07:00:00+01:00",
+  insuranceBasis: "initial_principal",
   status: "active",
 };
 

@@ -163,6 +163,13 @@ export async function createLegalEntity(
         ? {}
         : { fiscalYearEndMonth: input.fiscalYearEndMonth }),
       ...(input.fiscalYearEndDay === undefined ? {} : { fiscalYearEndDay: input.fiscalYearEndDay }),
+      ...(input.addressLine1 === undefined ? {} : { addressLine1: input.addressLine1 }),
+      ...(input.addressLine2 === undefined ? {} : { addressLine2: input.addressLine2 }),
+      ...(input.postalCode === undefined ? {} : { postalCode: input.postalCode }),
+      ...(input.city === undefined ? {} : { city: input.city }),
+      ...(input.country === undefined ? {} : { country: input.country }),
+      ...(input.contactEmail === undefined ? {} : { contactEmail: input.contactEmail }),
+      ...(input.contactPhone === undefined ? {} : { contactPhone: input.contactPhone }),
     })
     .returning();
   const entity = toLegalEntity(requireRow(rows[0], "legal_entity"));
@@ -200,6 +207,13 @@ export async function updateLegalEntity(
       ...(input.eInvoicingChannel === undefined
         ? {}
         : { eInvoicingChannel: input.eInvoicingChannel }),
+      ...(input.addressLine1 === undefined ? {} : { addressLine1: input.addressLine1 }),
+      ...(input.addressLine2 === undefined ? {} : { addressLine2: input.addressLine2 }),
+      ...(input.postalCode === undefined ? {} : { postalCode: input.postalCode }),
+      ...(input.city === undefined ? {} : { city: input.city }),
+      ...(input.country === undefined ? {} : { country: input.country }),
+      ...(input.contactEmail === undefined ? {} : { contactEmail: input.contactEmail }),
+      ...(input.contactPhone === undefined ? {} : { contactPhone: input.contactPhone }),
       ...(input.status === undefined ? {} : { status: input.status }),
       updatedAt: new Date().toISOString(),
       version: sql`${tables.legalEntity.version} + 1`,
