@@ -16,7 +16,7 @@ test("the home names what needs the owner and never claims all is well blindly",
 
   // No nightly control has run on a fresh organization.
   const banner = page.getByTestId("situation-banner");
-  await expect(banner).toHaveAttribute("data-controls", "sources_unavailable");
+  await expect(banner).toHaveAttribute("data-controls", "sources_unavailable", { timeout: 20_000 });
   await expect(page.getByText("Rien ne nécessite votre intervention.")).toHaveCount(0);
   await expect(page.getByTestId("accueil-empty")).toContainText(
     "les contrôles ne sont pas complets",

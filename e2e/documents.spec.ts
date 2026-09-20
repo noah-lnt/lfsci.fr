@@ -38,6 +38,11 @@ test("a photo captured from the lot is stored, listed and downloadable", async (
   expect(fetched.headers()["content-disposition"] ?? "").toContain('filename="ticket.png"');
   expect((await fetched.body()).length).toBe(70);
 
+  // Mobile WebKit opens the file inline instead of downloading; come back before the scan.
+  if (!page.url().includes("/patrimoine/lots/")) {
+    await page.goBack();
+    await expect(row).toHaveCount(1, { timeout: 20_000 });
+  }
   await assertAccessible(page, "onglet Documents du lot");
 });
 

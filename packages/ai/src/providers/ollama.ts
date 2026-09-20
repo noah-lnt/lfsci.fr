@@ -100,8 +100,7 @@ export function createOllamaProvider(config: OllamaProviderConfig): AiProviderCl
       });
     } catch (error) {
       throw new AppError("UPSTREAM_UNAVAILABLE", {
-        message: "ollama unreachable",
-        details: { baseUrl: config.baseUrl },
+        details: { reason: "ollama unreachable", baseUrl: config.baseUrl },
         cause: error,
       });
     }
