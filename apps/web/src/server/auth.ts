@@ -103,7 +103,9 @@ function build() {
     },
     // better-auth's own per-endpoint limiter is on in production by default; the
     // browser suite signs seven owners up at once from one address and turns it off.
-    rateLimit: { enabled: process.env.AUTH_RATE_LIMIT !== "off" && process.env.NODE_ENV === "production" },
+    rateLimit: {
+      enabled: process.env.AUTH_RATE_LIMIT !== "off" && process.env.NODE_ENV === "production",
+    },
     session: {
       expiresIn: 60 * 60 * 24 * 14,
       updateAge: 60 * 60 * 24,
