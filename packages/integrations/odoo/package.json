@@ -1,0 +1,21 @@
+{
+  "name": "@lfsci/odoo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/fake-server.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lfsci/contracts": "*",
+    "@lfsci/kernel": "*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}
