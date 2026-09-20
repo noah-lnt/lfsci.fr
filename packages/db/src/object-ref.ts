@@ -4,11 +4,16 @@ import type { Tx } from "./client";
 import {
   activity,
   activityLink,
+  ccaMovement,
   deadline,
   deadlineLink,
   event,
   eventLink,
+  expense,
+  intervention,
+  lease,
   objectRef,
+  rentTerm,
 } from "./generated/schema";
 
 export const objectRefColumnByKind = {
@@ -39,6 +44,43 @@ export const objectRefColumnByKind = {
 } as const;
 
 export type ObjectKind = keyof typeof objectRefColumnByKind;
+
+/**
+ * Rows a command can be checked against just before its external effect. The
+ * `object_ref` registry does not list `cca_movement` — the movement is addressed
+ * by its own id, its account carries the object ref.
+ */
+export const versionedTableByKind = {
+  lease,
+  rent_term: rentTerm,
+  expense,
+  cca_movement: ccaMovement,
+  intervention,
+} as const;
+
+export type VersionedKind = keyof typeof versionedTableByKind;
+
+/**
+ * Payload key → kind, most specific first: a payload carries several ids and the
+ * first match is the object the command is about.
+ */
+export const commandTargetKeys: readonly (readonly [string, VersionedKind])[] = [
+  ["ccaMovementId", "cca_movement"],
+  ["rentTermId", "rent_term"],
+  ["interventionId", "intervention"],
+  ["expenseId", "expense"],
+  ["leaseId", "lease"],
+];
+
+export function commandTargetOf(payload: unknown): { kind: VersionedKind; id: string } | null {
+  if (typeof payload !== "object" || payload === null) return null;
+  const record = payload as Record<string, unknown>;
+  for (const [key, kind] of commandTargetKeys) {
+    const id = record[key];
+    if (typeof id === "string" && id.length > 0) return { kind, id };
+  }
+  return null;
+}
 
 export type ObjectTarget = { organizationId: string; kind: ObjectKind; id: string };
 

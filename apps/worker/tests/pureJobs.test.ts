@@ -1,5 +1,6 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
+import { loadEnv } from "../src/env";
 import { healthBody } from "../src/health";
 import {
   collectCandidates,
@@ -138,18 +139,51 @@ describe("deadline identity", () => {
 });
 
 describe("quarters and health", () => {
-  it("walks back four quarters across the year boundary", () => {
+  it("walks back eight quarters across the year boundary", () => {
     expect(lastQuarters(new Date("2026-02-10T00:00:00Z"))).toEqual([
       { year: 2026, quarter: 1 },
       { year: 2025, quarter: 4 },
       { year: 2025, quarter: 3 },
       { year: 2025, quarter: 2 },
+      { year: 2025, quarter: 1 },
+      { year: 2024, quarter: 4 },
+      { year: 2024, quarter: 3 },
+      { year: 2024, quarter: 2 },
     ]);
+  });
+
+  it("still keeps a revision's base quarter after a year of refreshes", () => {
+    // The base of a revision computed in 2026 Q1 is the same quarter of 2025.
+    const base = "2025-Q1";
+    const refreshes = ["2026-01-20", "2026-04-20", "2026-07-20", "2026-10-20"];
+    for (const day of refreshes) {
+      const kept = lastQuarters(new Date(`${day}T07:00:00Z`)).map(
+        ({ year, quarter }) => `${year}-Q${quarter}`,
+      );
+      expect(kept).toContain(base);
+    }
   });
 
   it("answers `starting` until the first heartbeat", () => {
     const body = healthBody(["outbox.dispatch"]);
     expect(body.queues).toEqual(["outbox.dispatch"]);
     expect(["ok", "starting"]).toContain(body.status);
+  });
+});
+
+describe("worker env", () => {
+  const base = { DATABASE_URL: "postgres://app", DATABASE_ADMIN_URL: "postgres://admin" };
+
+  it("declares the embedding keys the AI client reads, blank falling back to the default", () => {
+    expect(loadEnv({ ...base, OLLAMA_MODEL_EMBED: "", AI_EMBED_DIMENSIONS: "" })).toMatchObject({
+      OLLAMA_MODEL_EMBED: "bge-m3",
+      AI_EMBED_DIMENSIONS: 1024,
+    });
+  });
+
+  it("keeps an explicit embedding model and width", () => {
+    expect(
+      loadEnv({ ...base, OLLAMA_MODEL_EMBED: "nomic-embed-text", AI_EMBED_DIMENSIONS: "768" }),
+    ).toMatchObject({ OLLAMA_MODEL_EMBED: "nomic-embed-text", AI_EMBED_DIMENSIONS: 768 });
   });
 });

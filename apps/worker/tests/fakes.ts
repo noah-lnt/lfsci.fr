@@ -31,6 +31,8 @@ export const fakeEnv: WorkerEnv = {
   WORKER_HEALTH_PORT: 9099,
   PGBOSS_SCHEMA: "pgboss_test",
   ODOO_RATE_LIMIT_PER_SECOND: 1,
+  OLLAMA_MODEL_EMBED: "bge-m3",
+  AI_EMBED_DIMENSIONS: 1024,
 };
 
 /** Every port absent by default; a test opts in to the one it exercises. */
