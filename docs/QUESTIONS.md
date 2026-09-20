@@ -4,7 +4,7 @@ Collected during the autonomous build of 2026-09-20. Each item names what was as
 
 ## 1. Blocking before the first real run
 
-1. **Odoo Online plan (D-01).** The external API needs the Custom plan. Is the subscription Custom, and is the API enabled? Without it Phase 0 cannot start.
+1. **Odoo Online plan (D-01) — decided 2026-09-20.** The owner keeps Odoo Online for its bank reconciliation; self-hosted Community was considered and rejected. The external API is a Custom-plan feature: €37.40 per user per month billed monthly, €29.90 billed yearly on odoo.com/pricing-plan as of 2026-09-20. Remaining action: subscribe to Custom, then create the neutralised duplicate and the bot API key for Phase 0.
 2. **Rent terms have no Odoo entry point yet.** The connector exposes supplier bills (`in_invoice`), attachments and a reconciliation placeholder. A rent term is a customer invoice (`out_invoice`), and the dispatcher refuses `prepare_rent_accounting` terminally with `no_typed_operation` rather than guess. Phase 0 on the neutralised duplicate must confirm the model, method and fields; then the operation is added.
 3. **Bot user and `/doc` snapshot.** Create a bot user with minimal rights on the duplicate, generate an API key, and export `/doc`; the connector's capability snapshot comes from it.
 4. **Stable reference field in Odoo.** A Studio text field on `account.move` (default name `x_lfsci_ref`, indexed, not unique) carries the operation reference used to reconcile lost responses. Confirm the name.

@@ -31,6 +31,7 @@ npm run spec:docx                                        # rebuild the Word spec
 - **Commands, not writes, toward Odoo**: a mutation writes decision + `command` + `approval` + `outbox_entry` in one tenant transaction; the worker's `outbox.dispatch` is the only Odoo caller; `RESULT_UNKNOWN` is reconciled by operation reference, never retried blindly (tech pack §5).
 - **Every request carries `x-request-id`** (UUIDv7) from `proxy.ts` through `runWithCorrelation` to jobs, exchanges and error payloads; the ops screen searches by it.
 - **Dev DB user is a superuser**: RLS is only exercised because `withTenant` switches to `lfsci_app` (migration 0004 grants it). Tests that skip that switch prove nothing.
+- **Odoo Online stays the ledger (owner decision 2026-09-20), chosen for its native bank reconciliation; the API needs the Custom plan.** Self-hosting Community with OCA modules was evaluated and rejected; do not propose it again unless the owner reopens it.
 - Spec and research notes stay in French; code, commits and docs in English. Phase 0 (spec §21.1) runs on a neutralised Odoo duplicate, never the live base.
 - Owner questions and unverified vendor details are tracked in `docs/QUESTIONS.md`; a technology change is a tech-pack edit plus a spec history line.
 

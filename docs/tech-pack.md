@@ -309,7 +309,7 @@ The living list, updated as the build progresses, is `docs/QUESTIONS.md`; the ta
 
 | Id | Decision | Recommendation |
 |---|---|---|
-| D-01 | Upgrade the Odoo Online subscription to Custom for API access | Required; budget it now |
+| D-01 | Upgrade the Odoo Online subscription to Custom for API access | **Decided 2026-09-20:** Odoo Online kept for its native bank reconciliation, Custom plan to subscribe (€37.40/user/month monthly, €29.90 yearly, odoo.com/pricing-plan). Self-hosted Community with OCA modules was evaluated and rejected |
 | D-02 | Bank feed path if Banque Populaire is unsupported by Odoo's providers | CAMT.053 or OFX import into Odoo; the SaaS reads Odoo |
 | D-03 | Object storage provider | Scaleway `fr-par`; Garage on the box only if data must never leave it |
 | D-04 | LLM residency | Bedrock `eu-west-3` by default; first-party API + DPA if US processing is acceptable |
