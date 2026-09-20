@@ -7,6 +7,7 @@ import { createAssistantPorts } from "@/server/assistant/ports";
 import { createEventMapper, encodeEvent, errorEvent } from "@/server/assistant/sse";
 import { auth } from "@/server/auth";
 import { rateLimit, tooManyRequests } from "@/server/rate-limit";
+import { isAllowed } from "@/server/rpc/policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,6 +53,15 @@ export async function POST(request: Request): Promise<Response> {
   const organizationId =
     (session.session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null;
   if (!organizationId) return singleFrame(requestId, "FORBIDDEN");
+  // The stream bypasses the RPC router, so the same role policy is applied here.
+  const member = await auth().api.getActiveMember({ headers: request.headers });
+  const permitted = isAllowed({
+    path: ["assistant", "stream"],
+    method: "POST",
+    role: member?.role ?? null,
+    session: true,
+  });
+  if (!permitted) return singleFrame(requestId, "FORBIDDEN");
 
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return singleFrame(requestId, "VALIDATION");

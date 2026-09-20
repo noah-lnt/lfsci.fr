@@ -1,4 +1,5 @@
 import "server-only";
+import { authorize, implementer } from "./base";
 import { accueilRouter } from "./modules/accueil";
 import { acquisitionsRouter } from "./modules/acquisitions";
 import { assistantRouter } from "./modules/assistant";
@@ -23,7 +24,7 @@ import { revisionsRouter } from "./modules/revisions";
 import { travauxRouter } from "./modules/travaux";
 
 // Each feature module owns its file under ./modules; this object only assembles them.
-export const router = {
+const modules = {
   health,
   me,
   ops,
@@ -47,4 +48,7 @@ export const router = {
   ...revisionsRouter,
   ...travauxRouter,
 };
+
+/** The role policy wraps every procedure here, so no module can forget it. */
+export const router = implementer.use(authorize).router(modules);
 export type AppRouter = typeof router;
