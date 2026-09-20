@@ -10,8 +10,10 @@ const TABS = [
   { href: "/finance/depenses", key: "expenses" },
   { href: "/finance/credits", key: "loans" },
   { href: "/finance/cca", key: "cca" },
+  { href: "/finance/charges", key: "charges" },
   { href: "/finance/actifs", key: "assets" },
   { href: "/finance/banques", key: "banks" },
+  { href: "/finance/acquisitions", key: "acquisitions" },
 ] as const;
 
 export function FinanceTabs() {

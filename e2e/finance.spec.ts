@@ -126,3 +126,69 @@ test("the owner captures, allocates and validates an expense, then a loan and a 
 
   await assertAccessible(page, "/finance");
 });
+
+test("the owner keeps the asset register and the bank accounts", async ({ page }) => {
+  test.slow();
+  const slug = await signUp(page);
+  await seedPatrimoine(slug);
+
+  // --- IMM-01/IMM-02: gross value, land, components, VNC ---------------------
+  await page.goto("/finance/actifs/nouvelle");
+  await pick(page, "SCI", "SCI de démonstration");
+  await pick(page, "Immeuble", "Immeuble Demo");
+  await page.getByLabel("Libellé", { exact: true }).fill("Immeuble Demo");
+  await page.getByLabel("Valeur brute", { exact: true }).fill("300000,00");
+  await page.getByLabel("Valeur du terrain", { exact: true }).fill("60000,00");
+  await page.getByLabel("Mise en service").fill("2020-01-01");
+  await page.getByRole("button", { name: "Créer l’immobilisation" }).click();
+  await page.waitForURL(/\/finance\/actifs\/[0-9a-f-]{36}$/, { timeout: 30_000 });
+
+  // No duration was entered: the default applies and the screen says it.
+  await expect(page.getByText("une durée par défaut a été appliquée")).toBeVisible();
+  const nbv = page.getByTestId("asset-detail-nbv");
+  await expect(nbv).toBeVisible();
+
+  // A component carries its own duration; the register sums components.
+  const componentForm = page.locator("form", {
+    has: page.getByRole("button", { name: "Ajouter le composant" }),
+  });
+  await componentForm.getByLabel("Composant", { exact: true }).fill("Toiture");
+  await componentForm.getByLabel("Valeur brute", { exact: true }).fill("40000,00");
+  await componentForm.getByLabel("Durée (années)", { exact: true }).fill("20");
+  await componentForm.getByRole("button", { name: "Ajouter le composant" }).click();
+  await expect(page.getByRole("cell", { name: "Toiture" })).toBeVisible({ timeout: 15_000 });
+
+  await assertAccessible(page, "/finance/actifs/[id]");
+
+  await page.goto("/finance/actifs");
+  await expect(page.getByTestId("asset-nbv").first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("assets-default")).toBeVisible();
+  await assertAccessible(page, "/finance/actifs");
+
+  // --- BAN-01: a balance never appears without saying where it comes from ----
+  await page.goto("/finance/banques");
+  const total = page.getByTestId("bank-total");
+  await expect(total).toBeVisible({ timeout: 15_000 });
+  await expect(total).toHaveText(/10\s?000,00/);
+  // No movement has been mirrored: the figure is the opening balance, and says so.
+  await expect(page.getByText("solde d’ouverture, aucun mouvement connu").first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Nouveau compte" }).click();
+  await pick(page, "SCI", "SCI de démonstration");
+  await page.getByLabel("Libellé", { exact: true }).fill("Compte dépôts");
+  await page.getByLabel("Solde d’ouverture", { exact: true }).fill("2000,00");
+  await page.getByRole("button", { name: "Créer le compte" }).click();
+  await expect(page.getByRole("cell", { name: "Compte dépôts" })).toBeVisible({ timeout: 15_000 });
+  await expect(total).toHaveText(/12\s?000,00/);
+
+  // F09: an internal transfer is cash moving between our own accounts.
+  await pick(page, "Compte débité", "Compte courant SCI");
+  await pick(page, "Compte crédité", "Compte dépôts");
+  await page.getByLabel("Montant", { exact: true }).fill("500,00");
+  await page.getByRole("button", { name: "Enregistrer le virement" }).click();
+  await expect(page.getByRole("cell", { name: "En transit" })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Marquer reçu" }).first().click();
+  await expect(page.getByRole("cell", { name: "Reçu" })).toBeVisible({ timeout: 15_000 });
+
+  await assertAccessible(page, "/finance/banques");
+});

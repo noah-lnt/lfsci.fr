@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { type ReactNode, useId } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -115,4 +115,36 @@ export function SelectField({
 
 export function optionsFrom(entries: Record<string, string>, keys: readonly string[]): Option[] {
   return keys.map((key) => ({ value: key, label: entries[key] ?? key }));
+}
+
+/**
+ * ui-kit.md: a caption and its value align by construction in a grid, never by
+ * two stacked flex columns.
+ */
+export function Figure({
+  label,
+  hint,
+  children,
+  testId,
+}: {
+  label: string;
+  hint?: string | null;
+  children: ReactNode;
+  testId?: string;
+}) {
+  return (
+    <div className="space-y-0.5">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="text-lg font-semibold" data-testid={testId}>
+        {children}
+        {hint ? (
+          <span className="block text-xs font-normal text-muted-foreground">{hint}</span>
+        ) : null}
+      </dd>
+    </div>
+  );
+}
+
+export function FigureList({ children }: { children: ReactNode }) {
+  return <dl className="grid grid-cols-2 gap-4 md:grid-cols-4">{children}</dl>;
 }

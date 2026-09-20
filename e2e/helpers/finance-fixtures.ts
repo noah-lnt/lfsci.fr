@@ -192,3 +192,29 @@ export async function loanInstallmentCount(organizationId: string): Promise<numb
     return rows.length;
   });
 }
+
+/** ACQ-01: what a conversion created, counted on the rows, not on the screen. */
+export async function conversionSnapshot(organizationId: string): Promise<{
+  buildings: number;
+  loans: number;
+  assets: number;
+  commands: number;
+}> {
+  return withTenant(db(), { organizationId }, async (tx) => {
+    const [buildings, loans, assets, commands] = await Promise.all([
+      tx.select({ id: tables.building.id }).from(tables.building),
+      tx.select({ id: tables.loan.id }).from(tables.loan),
+      tx.select({ id: tables.fixedAsset.id }).from(tables.fixedAsset),
+      tx
+        .select({ id: tables.command.id })
+        .from(tables.command)
+        .where(eq(tables.command.commandType, "convert_acquisition")),
+    ]);
+    return {
+      buildings: buildings.length,
+      loans: loans.length,
+      assets: assets.length,
+      commands: commands.length,
+    };
+  });
+}

@@ -1,9 +1,14 @@
 import "server-only";
-import type { Loan } from "@lfsci/contracts";
+import type { Loan, UpdateLoanInput } from "@lfsci/contracts";
 import { type Tx, tables } from "@lfsci/db";
-import { buildSchedule, decimal, toMoney } from "@lfsci/domain";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
-import type { CreateLoanWithScheduleInput, LoanSchedule } from "@/lib/contracts/finance";
+import { buildSchedule, decimal, insuranceBasisOf, scheduleProgress, toMoney } from "@lfsci/domain";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import type {
+  CreateLoanWithScheduleInput,
+  LinkLoanPropertyInput,
+  LoanPropertyLink,
+  LoanSchedule,
+} from "@/lib/contracts/finance";
 import { type Actor, audit, recordFact } from "./facts";
 import { mapInstallment, mapLoan, withDebitMatch } from "./mappers";
 import {
@@ -14,6 +19,8 @@ import {
   offsetFromCursor,
   ruleViolation,
   sumAmounts,
+  today,
+  versionConflict,
 } from "./shared";
 
 // loan.nominal_rate / insurance_rate are stored as percentages; the domain
@@ -83,26 +90,28 @@ export async function createLoan(
       deferralMonths: input.deferralMonths ?? null,
       upfrontFees: input.upfrontFees ?? null,
       bankAccountId: input.bankAccountId ?? null,
+      insuranceBasis: input.insuranceBasis ?? "initial_principal",
       status: "active",
     })
     .returning();
   const loan = firstOr(inserted, "Crédit");
 
-  const insuranceMonthly =
-    input.insuranceMonthly ??
-    (loan.insuranceRate === null
-      ? "0.00"
-      : toMoney(
-          decimal(loan.principalAmount)
-            .times(decimal(asFraction(loan.insuranceRate)))
-            .dividedBy(12),
-        ));
+  // Question 10: the bank's rule is the loan's, and it shapes the stored
+  // schedule; an explicit monthly premium overrides both.
+  const insurance =
+    input.insuranceMonthly !== undefined || loan.insuranceRate === null
+      ? undefined
+      : {
+          basis: input.insuranceBasis ?? ("initial_principal" as const),
+          annualRate: asFraction(loan.insuranceRate),
+        };
 
   const schedule = buildSchedule({
     principal: amount(loan.principalAmount),
     annualNominalRate: asFraction(loan.nominalRate),
     months,
-    insuranceMonthly,
+    ...(input.insuranceMonthly === undefined ? {} : { insuranceMonthly: input.insuranceMonthly }),
+    ...(insurance === undefined ? {} : { insurance }),
     feesMonthly: input.feesMonthly ?? "0.00",
     firstDueDate: input.firstDueOn,
     ...(input.deferralMonths
@@ -172,15 +181,27 @@ export async function getSchedule(tx: Tx, loanId: string): Promise<LoanSchedule>
   const versions = await tx
     .select()
     .from(tables.loanScheduleVersion)
-    .where(
-      and(
-        eq(tables.loanScheduleVersion.loanId, loanId),
-        eq(tables.loanScheduleVersion.status, "active"),
-      ),
-    )
-    .orderBy(desc(tables.loanScheduleVersion.sequence))
-    .limit(1);
-  const version = versions[0];
+    .where(eq(tables.loanScheduleVersion.loanId, loanId))
+    .orderBy(desc(tables.loanScheduleVersion.sequence));
+  const version = versions.find((row) => row.status === "active");
+
+  const counts =
+    versions.length === 0
+      ? []
+      : await tx
+          .select({
+            scheduleVersionId: tables.loanInstallment.scheduleVersionId,
+            total: sql<number>`count(*)::int`,
+          })
+          .from(tables.loanInstallment)
+          .where(
+            inArray(
+              tables.loanInstallment.scheduleVersionId,
+              versions.map((row) => row.id),
+            ),
+          )
+          .groupBy(tables.loanInstallment.scheduleVersionId);
+  const countByVersion = new Map(counts.map((row) => [row.scheduleVersionId, row.total]));
 
   const rows = version
     ? await tx
@@ -217,6 +238,25 @@ export async function getSchedule(tx: Tx, loanId: string): Promise<LoanSchedule>
   );
 
   const totalPrincipal = sumAmounts(installments.map((row) => row.principalAmount));
+  const lines = installments.map((row) => ({
+    dueDate: row.dueOn,
+    capital: row.principalAmount,
+    interest: row.interestAmount,
+    insurance: row.insuranceAmount,
+    fees: row.feesAmount,
+    total: row.totalAmount,
+    remainingPrincipal: row.remainingPrincipal,
+  }));
+  const asOf = today();
+  const progress = scheduleProgress({
+    principal: amount(loan.principalAmount),
+    installments: lines,
+    on: asOf,
+  });
+
+  // CRE-01: the accounting balance wins over the forecast one when Odoo answered.
+  const fromOdoo = loan.odooOutstandingPrincipal !== null;
+
   return {
     loanId,
     currency: loan.currency,
@@ -227,5 +267,134 @@ export async function getSchedule(tx: Tx, loanId: string): Promise<LoanSchedule>
     totalFees: sumAmounts(installments.map((row) => row.feesAmount)),
     totalPaid: sumAmounts(installments.map((row) => row.totalAmount)),
     principalMatchesLoan: totalPrincipal === amount(loan.principalAmount),
+    versions: versions.map((row) => ({
+      id: row.id,
+      sequence: row.sequence,
+      reason: row.reason,
+      source: row.source,
+      effectiveFrom: row.effectiveFrom,
+      status: row.status,
+      installments: countByVersion.get(row.id) ?? 0,
+    })),
+    activeVersionId: version?.id ?? null,
+    deferredInstallments: installments.filter((row) => row.principalAmount === "0.00").length,
+    insuranceBasis: insuranceBasisOf(lines),
+    storedInsuranceBasis: loan.insuranceBasis as "initial_principal" | "outstanding_principal",
+    insuranceBasisMismatch: insuranceBasisMismatch(loan.insuranceBasis, insuranceBasisOf(lines)),
+    progress: {
+      ...progress,
+      outstandingPrincipal: fromOdoo
+        ? amount(loan.odooOutstandingPrincipal)
+        : progress.outstandingPrincipal,
+      outstandingSource: fromOdoo ? ("odoo" as const) : ("saas_projection" as const),
+    },
+    properties: await propertiesOf(tx, loanId),
   };
+}
+
+async function propertiesOf(tx: Tx, loanId: string): Promise<LoanPropertyLink[]> {
+  const rows = await tx
+    .select({
+      id: tables.loanProperty.id,
+      buildingId: tables.loanProperty.buildingId,
+      unitId: tables.loanProperty.unitId,
+      financedShare: tables.loanProperty.financedShare,
+      buildingName: tables.building.name,
+      unitLabel: tables.unit.label,
+      unitCode: tables.unit.code,
+    })
+    .from(tables.loanProperty)
+    .leftJoin(tables.building, eq(tables.loanProperty.buildingId, tables.building.id))
+    .leftJoin(tables.unit, eq(tables.loanProperty.unitId, tables.unit.id))
+    .where(eq(tables.loanProperty.loanId, loanId));
+  return rows.map((row) => ({
+    id: row.id,
+    buildingId: row.buildingId,
+    unitId: row.unitId,
+    label:
+      row.unitId === null
+        ? (row.buildingName ?? "Immeuble")
+        : `${row.unitCode ?? ""} — ${row.unitLabel ?? ""}`.trim(),
+    financedShare: row.financedShare,
+  }));
+}
+
+export async function updateLoan(tx: Tx, actor: Actor, input: UpdateLoanInput): Promise<Loan> {
+  const patch = {
+    ...(input.lenderName === undefined ? {} : { lenderName: input.lenderName }),
+    ...(input.nominalRate === undefined ? {} : { nominalRate: input.nominalRate }),
+    ...(input.insuranceRate === undefined ? {} : { insuranceRate: input.insuranceRate }),
+    ...(input.bankAccountId === undefined ? {} : { bankAccountId: input.bankAccountId }),
+    ...(input.status === undefined ? {} : { status: input.status }),
+  };
+  const updated = await tx
+    .update(tables.loan)
+    .set({ ...patch, version: input.expectedVersion + 1, updatedAt: new Date().toISOString() })
+    .where(and(eq(tables.loan.id, input.id), eq(tables.loan.version, input.expectedVersion)))
+    .returning();
+  const loan = updated[0];
+  if (!loan) versionConflict("Le crédit");
+  await audit(tx, actor, {
+    objectTable: "loan",
+    objectId: input.id,
+    action: "update",
+    after: patch,
+  });
+  return mapLoan(loan);
+}
+
+/** CRE-01: a loan names the properties it financed; the share is optional. */
+export async function linkProperty(
+  tx: Tx,
+  actor: Actor,
+  input: LinkLoanPropertyInput,
+): Promise<{ properties: LoanPropertyLink[] }> {
+  if ((input.buildingId === undefined) === (input.unitId === undefined)) {
+    ruleViolation("Rattachez le crédit à un immeuble ou à un lot, pas aux deux.");
+  }
+  const inserted = await tx
+    .insert(tables.loanProperty)
+    .values({
+      organizationId: actor.organizationId,
+      loanId: input.loanId,
+      buildingId: input.buildingId ?? null,
+      unitId: input.unitId ?? null,
+      financedShare: input.financedShare ?? null,
+    })
+    .returning();
+  const link = firstOr(inserted, "Bien financé");
+  await audit(tx, actor, {
+    objectTable: "loan_property",
+    objectId: link.id,
+    action: "create",
+    after: { loanId: input.loanId, buildingId: link.buildingId, unitId: link.unitId },
+  });
+  return { properties: await propertiesOf(tx, input.loanId) };
+}
+
+export async function unlinkProperty(
+  tx: Tx,
+  actor: Actor,
+  id: string,
+): Promise<{ properties: LoanPropertyLink[] }> {
+  const deleted = await tx
+    .delete(tables.loanProperty)
+    .where(eq(tables.loanProperty.id, id))
+    .returning();
+  const link = firstOr(deleted, "Bien financé");
+  await audit(tx, actor, {
+    objectTable: "loan_property",
+    objectId: id,
+    action: "delete",
+    before: { loanId: link.loanId },
+  });
+  return { properties: await propertiesOf(tx, link.loanId) };
+}
+
+/** Observed premiums that fit neither rule are not a disagreement, only an unknown. */
+export function insuranceBasisMismatch(stored: string, observed: string): boolean {
+  return (
+    (observed === "initial_principal" || observed === "outstanding_principal") &&
+    observed !== stored
+  );
 }

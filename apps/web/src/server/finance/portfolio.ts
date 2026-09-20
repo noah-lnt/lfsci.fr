@@ -3,25 +3,20 @@ import type { api } from "@lfsci/contracts";
 import { type Tx, tables } from "@lfsci/db";
 import { and, asc, eq, gte, inArray, lte, ne, notInArray, sql } from "drizzle-orm";
 import type { z } from "zod";
-import type {
-  BankAccountSummary,
-  FinanceDashboard,
-  FinanceKpi,
-  FixedAssetPosition,
-} from "@/lib/contracts/finance";
+import type { BankAccountSummary, FinanceDashboard, FinanceKpi } from "@/lib/contracts/finance";
+import { accountBalances, consolidatedBasis } from "./bank";
 import { aggregateForecast, type ForecastEvent } from "./forecast";
 import { mapBankAccount, mapFixedAssetPosition } from "./mappers";
-import {
-  amount,
-  DEFAULT_LIMIT,
-  firstOr,
-  nextCursor,
-  offsetFromCursor,
-  sumAmounts,
-  today,
-} from "./shared";
+import { amount, DEFAULT_LIMIT, nextCursor, offsetFromCursor, sumAmounts, today } from "./shared";
 
 type Forecast = z.infer<typeof api.finance.getCashForecast.output>;
+
+/** BAN-01: a figure never appears without saying where its balance came from. */
+const BASIS_LABEL = {
+  ledger: "comptable (Odoo)",
+  computed: "calculé sur les mouvements",
+  opening_only: "d’ouverture, aucun mouvement connu",
+} as const;
 
 const OPEN_EXPENSE_STATES = ["captured", "extracted", "to_review", "validated", "posted"];
 
@@ -48,19 +43,30 @@ export async function listAssets(
     .orderBy(asc(tables.fixedAsset.label))
     .limit(limit + 1)
     .offset(offset);
+  const page = rows.slice(0, limit);
+
+  const counts =
+    page.length === 0
+      ? []
+      : await tx
+          .select({
+            fixedAssetId: tables.assetComponent.fixedAssetId,
+            total: sql<number>`count(*)::int`,
+          })
+          .from(tables.assetComponent)
+          .where(
+            inArray(
+              tables.assetComponent.fixedAssetId,
+              page.map((row) => row.id),
+            ),
+          )
+          .groupBy(tables.assetComponent.fixedAssetId);
+  const countById = new Map(counts.map((row) => [row.fixedAssetId, row.total]));
+
   return {
-    items: rows.slice(0, limit).map((row) => mapFixedAssetPosition(row, on)),
+    items: page.map((row) => mapFixedAssetPosition(row, on, countById.get(row.id) ?? 0)),
     nextCursor: nextCursor(offset, limit, rows.length),
   };
-}
-
-export async function getAsset(tx: Tx, id: string): Promise<FixedAssetPosition> {
-  const rows = await tx
-    .select()
-    .from(tables.fixedAsset)
-    .where(eq(tables.fixedAsset.id, id))
-    .limit(1);
-  return mapFixedAssetPosition(firstOr(rows, "Immobilisation"), today());
 }
 
 export async function listBankAccounts(
@@ -77,61 +83,27 @@ export async function listBankAccounts(
   return { accounts: rows.map(mapBankAccount) };
 }
 
-type AccountBalance = {
-  bankAccountId: string;
-  label: string;
-  balance: string;
-  currency: string;
-  asOf: string;
-  source: "odoo" | "saas_projection";
-  readAt: string | null;
-};
-
-/** BAN-01: opening balance plus the mirrored movements, dated, never assumed complete. */
-async function balancesOf(tx: Tx, legalEntityId: string | undefined): Promise<AccountBalance[]> {
-  const accounts = await tx
-    .select()
-    .from(tables.bankAccount)
-    .where(legalEntityId ? eq(tables.bankAccount.legalEntityId, legalEntityId) : undefined)
-    .orderBy(asc(tables.bankAccount.label));
-  if (accounts.length === 0) return [];
-
-  const movements = await tx
-    .select({
-      bankAccountId: tables.bankTransaction.bankAccountId,
-      total: sql<string>`coalesce(sum(${tables.bankTransaction.amount}), 0)`,
-      lastBookedOn: sql<string | null>`max(${tables.bankTransaction.bookedOn})`,
-      lastReadAt: sql<string | null>`max(${tables.bankTransaction.readAt})`,
-    })
-    .from(tables.bankTransaction)
-    .where(
-      inArray(
-        tables.bankTransaction.bankAccountId,
-        accounts.map((account) => account.id),
-      ),
-    )
-    .groupBy(tables.bankTransaction.bankAccountId);
-  const byAccount = new Map(movements.map((row) => [row.bankAccountId, row]));
-
-  return accounts.map((account) => {
-    const movement = byAccount.get(account.id);
-    return {
-      bankAccountId: account.id,
-      label: account.label,
-      balance: sumAmounts([account.openingBalance, movement?.total ?? "0"]),
-      currency: account.currency,
-      asOf: movement?.lastBookedOn ?? account.openingBalanceOn ?? today(),
-      source: "saas_projection" as const,
-      readAt: movement?.lastReadAt ? new Date(movement.lastReadAt).toISOString() : null,
-    };
-  });
+/** BAN-01: one balance rule for the whole app — see `bank.ts`. */
+async function balancesOf(tx: Tx, legalEntityId: string | undefined) {
+  return accountBalances(tx, legalEntityId, today());
 }
 
 export async function getBankBalances(
   tx: Tx,
   input: { legalEntityId?: string | undefined },
 ): Promise<z.infer<typeof api.finance.getBankBalances.output>> {
-  return { balances: await balancesOf(tx, input.legalEntityId) };
+  const balances = await balancesOf(tx, input.legalEntityId);
+  return {
+    balances: balances.map((balance) => ({
+      bankAccountId: balance.bankAccountId,
+      label: balance.label,
+      balance: balance.balance,
+      currency: balance.currency,
+      asOf: balance.asOf,
+      source: balance.source,
+      readAt: balance.readAt,
+    })),
+  };
 }
 
 async function forecastEvents(
@@ -252,6 +224,7 @@ export async function getDashboard(
 ): Promise<FinanceDashboard> {
   const asOf = today();
   const balances = await balancesOf(tx, input.legalEntityId);
+  const basis = consolidatedBasis(balances);
   const forecast = await getForecast(tx, { ...input, horizonDays: "30" });
 
   const loans = await tx
@@ -368,9 +341,13 @@ export async function getDashboard(
           .map((balance) => balance.asOf)
           .sort()
           .at(-1) ?? null,
-      detail: `${balances.length} compte${balances.length > 1 ? "s" : ""}`,
+      source: basis === "ledger" ? "odoo" : "saas_projection",
+      detail: `${balances.length} compte${balances.length > 1 ? "s" : ""} · ${BASIS_LABEL[basis]}`,
     }),
-    treasury: kpi(forecast.closingBalance, { asOf, detail: "prévision à 30 jours" }),
+    treasury: kpi(forecast.closingBalance, {
+      asOf,
+      detail: `prévision à 30 jours sur un solde ${BASIS_LABEL[basis]}`,
+    }),
     debt: kpi(sumAmounts(outstanding), {
       asOf,
       source: debtFromOdoo ? "odoo" : "saas_projection",

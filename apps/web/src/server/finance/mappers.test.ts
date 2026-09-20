@@ -50,13 +50,18 @@ describe("mapFixedAssetPosition — IMM-01 / IMM-02", () => {
     expect(mapFixedAssetPosition(asset(), "2030-01-01").accumulatedAt).toBe("80021.51");
   });
 
-  it("falls back to the posted depreciation without a duration", () => {
+  it("applies the house default duration and says so", () => {
     const position = mapFixedAssetPosition(
       asset({ durationYears: null, accumulatedDepreciation: "12000.00" }),
       "2030-01-01",
     );
-    expect(position.accumulatedAt).toBe("12000.00");
-    expect(position.netBookValueAt).toBe("288000.00");
+    expect(position.durationSource).toBe("default");
+    expect(position.durationMonths).toBe(360);
+    expect(position.accumulatedAt).toBe("80021.51");
+  });
+
+  it("reads a duration entered on the asset as the asset's own", () => {
+    expect(mapFixedAssetPosition(asset(), "2030-01-01").durationSource).toBe("asset");
   });
 
   it("honours an explicit 'none' method", () => {
@@ -66,6 +71,11 @@ describe("mapFixedAssetPosition — IMM-01 / IMM-02", () => {
     );
     expect(position.accumulatedAt).toBe("0.00");
     expect(position.netBookValueAt).toBe("300000.00");
+    expect(position.durationSource).toBe("none");
+  });
+
+  it("counts the components it was given", () => {
+    expect(mapFixedAssetPosition(asset(), "2030-01-01", 3).componentCount).toBe(3);
   });
 
   it("normalises the Postgres timestamp to an ISO instant", () => {

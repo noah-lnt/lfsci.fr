@@ -11,15 +11,37 @@ import {
 import { z } from "zod";
 import {
   BankAccountSummary,
+  BankOverview,
+  BankTransactionRow,
   CcaLedger,
   FinanceDashboard,
   FinanceLookups,
+  FixedAssetDetail,
   FixedAssetPosition,
+  InternalTransferRow,
+  LoanPropertyLink,
   LoanSchedule,
   RecordCcaMovementResult,
   ValidateExpenseResult,
 } from "@/lib/contracts/finance";
 import { tenant } from "../../data";
+import {
+  addComponent,
+  createAsset,
+  disposeAsset,
+  getAssetDetail,
+  removeComponent,
+  updateAsset,
+  updateComponent,
+} from "../../finance/assets";
+import {
+  bankOverview,
+  createAccount,
+  createTransfer,
+  listTransactions,
+  updateAccount,
+  updateTransfer,
+} from "../../finance/bank";
 import {
   getCurrentAccount,
   listCurrentAccounts,
@@ -36,10 +58,17 @@ import {
   updateExpense,
   validateExpense,
 } from "../../finance/expenses";
-import { createLoan, getLoan, getSchedule, listLoans } from "../../finance/loans";
+import {
+  createLoan,
+  getLoan,
+  getSchedule,
+  linkProperty,
+  listLoans,
+  unlinkProperty,
+  updateLoan,
+} from "../../finance/loans";
 import { financeLookups } from "../../finance/lookups";
 import {
-  getAsset,
   getBankBalances,
   getDashboard,
   getForecast,
@@ -118,9 +147,24 @@ export const financeRouter = {
         .handler(({ context, input }) =>
           tenant(scope(context), (tx) => createLoan(tx, actorOf(context), input)),
         ),
+      update: withOrganization.finance.loans.update
+        .use(validated(Loan))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => updateLoan(tx, actorOf(context), input)),
+        ),
       installments: withOrganization.finance.loans.installments
         .use(validated(LoanSchedule))
         .handler(({ context, input }) => tenant(scope(context), (tx) => getSchedule(tx, input.id))),
+      linkProperty: withOrganization.finance.loans.linkProperty
+        .use(validated(z.object({ properties: z.array(LoanPropertyLink) })))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => linkProperty(tx, actorOf(context), input)),
+        ),
+      unlinkProperty: withOrganization.finance.loans.unlinkProperty
+        .use(validated(z.object({ properties: z.array(LoanPropertyLink) })))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => unlinkProperty(tx, actorOf(context), input.id)),
+        ),
     },
     cca: {
       list: withOrganization.finance.cca.list
@@ -147,8 +191,40 @@ export const financeRouter = {
         .use(validated(paginated(FixedAssetPosition)))
         .handler(({ context, input }) => tenant(scope(context), (tx) => listAssets(tx, input))),
       get: withOrganization.finance.assets.get
-        .use(validated(FixedAssetPosition))
-        .handler(({ context, input }) => tenant(scope(context), (tx) => getAsset(tx, input.id))),
+        .use(validated(FixedAssetDetail))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => getAssetDetail(tx, input.id)),
+        ),
+      create: withOrganization.finance.assets.create
+        .use(validated(FixedAssetDetail))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => createAsset(tx, actorOf(context), input)),
+        ),
+      update: withOrganization.finance.assets.update
+        .use(validated(FixedAssetDetail))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => updateAsset(tx, actorOf(context), input)),
+        ),
+      dispose: withOrganization.finance.assets.dispose
+        .use(validated(FixedAssetDetail))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => disposeAsset(tx, actorOf(context), input)),
+        ),
+      addComponent: withOrganization.finance.assets.addComponent
+        .use(validated(FixedAssetDetail))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => addComponent(tx, actorOf(context), input)),
+        ),
+      updateComponent: withOrganization.finance.assets.updateComponent
+        .use(validated(FixedAssetDetail))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => updateComponent(tx, actorOf(context), input)),
+        ),
+      removeComponent: withOrganization.finance.assets.removeComponent
+        .use(validated(FixedAssetDetail))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => removeComponent(tx, actorOf(context), input.id)),
+        ),
     },
     bank: {
       accounts: withOrganization.finance.bank.accounts
@@ -160,6 +236,34 @@ export const financeRouter = {
         .use(validated(api.finance.getBankBalances.output))
         .handler(({ context, input }) =>
           tenant(scope(context), (tx) => getBankBalances(tx, input)),
+        ),
+      overview: withOrganization.finance.bank.overview
+        .use(validated(BankOverview))
+        .handler(({ context, input }) => tenant(scope(context), (tx) => bankOverview(tx, input))),
+      transactions: withOrganization.finance.bank.transactions
+        .use(validated(paginated(BankTransactionRow)))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => listTransactions(tx, input)),
+        ),
+      createAccount: withOrganization.finance.bank.createAccount
+        .use(validated(BankAccountSummary))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => createAccount(tx, actorOf(context), input)),
+        ),
+      updateAccount: withOrganization.finance.bank.updateAccount
+        .use(validated(BankAccountSummary))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => updateAccount(tx, actorOf(context), input)),
+        ),
+      createTransfer: withOrganization.finance.bank.createTransfer
+        .use(validated(InternalTransferRow))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => createTransfer(tx, actorOf(context), input)),
+        ),
+      updateTransfer: withOrganization.finance.bank.updateTransfer
+        .use(validated(InternalTransferRow))
+        .handler(({ context, input }) =>
+          tenant(scope(context), (tx) => updateTransfer(tx, actorOf(context), input)),
         ),
     },
     forecast: withOrganization.finance.forecast

@@ -1,5 +1,6 @@
 import "server-only";
 import type {
+  AssetComponent,
   CcaMovement,
   Expense,
   ExpenseAllocation,
@@ -11,7 +12,13 @@ import type {
   Supplier,
 } from "@lfsci/contracts";
 import type { tables } from "@lfsci/db";
-import { accumulatedAt, decimal, matchDebit, toMoney } from "@lfsci/domain";
+import {
+  accumulatedAt,
+  decimal,
+  matchDebit,
+  resolveDepreciationMonths,
+  toMoney,
+} from "@lfsci/domain";
 import type {
   BankAccountSummary,
   FixedAssetPosition,
@@ -28,6 +35,7 @@ type InstallmentRow = typeof tables.loanInstallment.$inferSelect;
 type CcaRow = typeof tables.partnerCurrentAccount.$inferSelect;
 type CcaMovementRow = typeof tables.ccaMovement.$inferSelect;
 type FixedAssetRow = typeof tables.fixedAsset.$inferSelect;
+type AssetComponentRow = typeof tables.assetComponent.$inferSelect;
 type BankAccountRow = typeof tables.bankAccount.$inferSelect;
 
 function audited(row: { createdAt: string; updatedAt: string | null; version: number }) {
@@ -147,6 +155,7 @@ export function mapLoan(row: LoanRow): Loan {
     bankAccountId: row.bankAccountId,
     odooOutstandingPrincipal: amountOrNull(row.odooOutstandingPrincipal),
     odooReadAt: instant(row.odooReadAt),
+    insuranceBasis: row.insuranceBasis as Loan["insuranceBasis"],
     status: row.status as Loan["status"],
   };
 }
@@ -248,10 +257,35 @@ export function mapFixedAsset(row: FixedAssetRow): FixedAsset {
  * no duration or an explicit "none" method, the position falls back to the
  * depreciation already posted.
  */
-export function mapFixedAssetPosition(row: FixedAssetRow, on: string): FixedAssetPosition {
+export function mapAssetComponent(row: AssetComponentRow): AssetComponent {
+  return {
+    id: row.id,
+    ...audited(row),
+    fixedAssetId: row.fixedAssetId,
+    label: row.label,
+    grossValue: amount(row.grossValue),
+    currency: row.currency,
+    durationYears: row.durationYears,
+    commissionedOn: row.commissionedOn,
+    replacedComponentId: row.replacedComponentId,
+    isDepreciable: row.isDepreciable,
+    equipmentId: row.equipmentId,
+    odooReadAt: instant(row.odooReadAt),
+  };
+}
+
+export function mapFixedAssetPosition(
+  row: FixedAssetRow,
+  on: string,
+  componentCount = 0,
+): FixedAssetPosition {
   const asset = mapFixedAsset(row);
   const depreciableGross = toMoney(decimal(asset.grossValue).minus(decimal(asset.landValue)));
-  const months = row.durationYears === null ? 0 : Math.round(Number(row.durationYears) * 12);
+  const duration =
+    row.method === "none"
+      ? { months: 0, years: 0, source: "none" as const }
+      : resolveDepreciationMonths({ kind: "building", durationYears: row.durationYears });
+  const months = duration.months;
   const start = row.commissionedOn;
   const computable = start !== null && months > 0 && row.method !== "none";
   const accumulated = computable
@@ -266,6 +300,9 @@ export function mapFixedAssetPosition(row: FixedAssetRow, on: string): FixedAsse
     accumulatedAt: accumulated,
     netBookValueAt: toMoney(decimal(asset.grossValue).minus(decimal(accumulated))),
     computedOn: on,
+    durationSource: duration.source,
+    durationMonths: months,
+    componentCount,
   };
 }
 
@@ -282,6 +319,10 @@ export function mapBankAccount(row: BankAccountRow): BankAccountSummary {
     openingBalanceOn: row.openingBalanceOn,
     feedSource: row.feedSource,
     feedLastSuccessAt: instant(row.feedLastSuccessAt),
+    odooBalance: amountOrNull(row.odooBalance),
+    odooBalanceOn: row.odooBalanceOn,
+    odooReadAt: instant(row.odooReadAt),
     status: row.status,
+    version: row.version,
   };
 }
