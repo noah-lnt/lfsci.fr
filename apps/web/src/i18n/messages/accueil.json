@@ -10,14 +10,19 @@
     "blocking": "Bloquant",
     "why": "Pourquoi",
     "effect": "Effet attendu",
-    "severity": { "critical": "Critique", "warning": "À traiter", "info": "Pour information" },
+    "severity": {
+      "critical": "Critique",
+      "warning": "À traiter",
+      "info": "Pour information"
+    },
     "kind": {
       "approval_pending": "Validation",
       "late_rent": "Loyer non reçu",
       "inbox_ambiguous": "Inbox",
       "deadline_due": "Échéance",
       "command_exception": "Commande",
-      "document_missing": "Pièce manquante"
+      "document_missing": "Pièce manquante",
+      "insurance_certificate": "Attestation d’assurance"
     },
     "banner": {
       "title": "Contrôles de la nuit",

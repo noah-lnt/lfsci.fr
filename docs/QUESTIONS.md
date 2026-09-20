@@ -64,17 +64,28 @@ Collected during the autonomous build of 2026-09-20. Each item names what was as
 29. **Overlap rules (D-12).** Exclusion constraints forbid overlapping usage periods, main lease units and equipment assignments. Keep unless a legitimate overlap exists.
 30. **`person` holds tenants, partners, guarantors and supplier contacts** with dated roles; retention keys on the role.
 31. **IBANs.** Only the SCI's own accounts store an IBAN (encrypted); counterparts keep a fingerprint and last four digits.
-32. **Embedding model (D-11).** `mistral-embed`, 1024 dimensions, pinned in the schema.
+32. **Embedding model (D-11) — changed 2026-09-20.** `bge-m3` through Ollama, chosen for French and for its 1024 dimensions, which is the width the `embedding` column was cut for; `AI_EMBED_DIMENSIONS` refuses any other width rather than truncating. Unverified until the box answers one `/api/embed` call. Changing the model width means a migration plus a re-index.
 33. **System-level integration exchanges** (no organization) are invisible under RLS and are written and purged from the admin path. Intended, or use a sentinel organization?
 34. **"Document missing on an active lease"** is read from `unit_diagnostic.status IN ('missing','expired')`; there is no document flag on the lease itself. Confirm the signal.
 35. **Nightly control report** is stored as an `event` of type `control_run` on the organization's first legal entity, report in `event.payload`. Confirm before relying on it.
 36. **IRL series storage.** `rule(code='irl_index', domain='rent_indexation')` with one `rule_version.definition` per change, deduplicated by hash. Confirm.
 
+### Raised by the 2026-09-20 build, to decide before real data
+
+42. **Reminder delays (LOY-04).** Coded as defaults, shown on the recouvrement screen: 5 days of grace, first reminder at 8 days, firm reminder at 21, mise en demeure at 45, at least 8 days between two, nothing under 5,00 €, and the ladder suspended when the ledger is more than 7 days stale. The spec says "délais approuvés": approve or change them, and say whether they belong in a `rule` row per SCI rather than a constant.
+43. **Mise en demeure by email.** The signature block prints the SCI's name and registered office; the tenant's consent to electronic delivery (`contact_point.consent_electronic_delivery`) is stored but not yet enforced before a formal notice leaves. Confirm you want it enforced, and what a tenant without consent gets (postal letter as a PDF to print).
+44. **Short-term rental exports.** The five CSV mapping versions use header names inferred from Airbnb-style exports. A wrong name surfaces as a named missing column, never as a silent mis-import, but one real export from each platform you use is needed to pin them. A mismatched declared total blocks the commit; say whether that strictness is wanted.
+45. **Guests as persons.** A booking's guest creates a `person` row and appears in the people directory; the retention class for guests is not decided.
+46. **Per-finding justification in an état des lieux.** `object_ref` has no `inspection_finding_id`, so a repair invoice can only be linked to the exit visit, not to one finding. A column would make the deduction traceable per finding; say whether that matters to you before the schema grows.
+47. **Heating complement and deposit ceilings.** The heating-period complement date is entered by hand (the heating period start is not held anywhere); the per-kind deposit ceilings (nue, meublée, bail mobilité) are not encoded, only the one- or two-month restitution deadline. Both need a source you validate.
+48. **Regularisation adjustment.** Travels as a `rent_term` of kind `charge_regularization` or `credit_note` through the existing `prepare_rent_accounting` command at level C, due 30 days after the statement, with a six-month window for the justificatifs. The accountant confirms the accounts and the wording.
+49. **Chart of accounts for the rent invoice.** The connector defaults to 708300 for rent and 706000 for provisions, measured on the local Odoo 18 and matching its labels; the tech pack once said the opposite. The accountant decides, and the values then go into `ODOO_ACCOUNT_*`.
+
 ## 4. Infrastructure to measure or decide
 
 37. **Production server — decided 2026-09-20: the owner's dedicated Debian server.** Still to measure there: RAM, CPU flags (`grep -c avx /proc/cpuinfo`), disk, whether a Traefik with the `web` network, `websecure` entrypoint and `letsencrypt` resolver exists (the prod compose assumes it) or must be added, and whether the Ollama box is reachable from it. The prod compose budgets about 1.7 GB across five containers.
 38. **Typst on that CPU.** Not documented either way; run the worker image once and render a quittance.
-39. **Production database roles — built 2026-09-20 (migration 0006).** `lfsci_service` (login, no superuser, no BYPASSRLS, member of `lfsci_app`) and `lfsci_maintenance` (login, BYPASSRLS, owner of the pg-boss schema) exist, with their grants and a test (tech pack §11.4). Remaining for you: `docker-compose.prod.yml` still points `DATABASE_URL` **and** `DATABASE_ADMIN_URL` at the image superuser — they must become `lfsci_service` and `lfsci_maintenance`, with the `migrate` service keeping the owner, and the db service must receive `APP_DB_PASSWORD` and `MAINTENANCE_DB_PASSWORD`.
+39. **Production database roles — built 2026-09-20 (migration 0006) and wired.** `lfsci_service` (login, no superuser, no BYPASSRLS, member of `lfsci_app`) and `lfsci_maintenance` (login, BYPASSRLS, owner of the pg-boss schema) exist with their grants and a test (tech pack §11.4). `docker-compose.prod.yml` now connects web and worker as those two roles and keeps the owner for the `migrate` service; the db service receives `APP_DB_PASSWORD` and `MAINTENANCE_DB_PASSWORD`. On a database that already exists the passwords are set by hand once (`docs/runbook.md` §2).
 40. **Hostname (D-09).** `app.lfsci.fr` assumed; DNS record and Traefik router move together.
 41. **Malware scanning (D-07).** Deferred: uploads are sniffed, re-encoded and viewed in isolation; ClamAV needs RAM the box may not have.
 

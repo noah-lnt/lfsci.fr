@@ -1,5 +1,13 @@
 import type { Tx } from "@lfsci/db";
-import { ensureObjectRef, linkDeadline, tables, withTenant } from "@lfsci/db";
+import {
+  ensureObjectRef,
+  ledgerFreshness,
+  linkDeadline,
+  overdueTerms,
+  tables,
+  unappliedCreditByLease,
+  withTenant,
+} from "@lfsci/db";
 import {
   type ArrearsQualification,
   DEFAULT_REMINDER_POLICY,
@@ -23,8 +31,6 @@ const log = logger("job.arrears.detect");
 
 export const ARREARS_RULE = "rent_arrears";
 export const ARREARS_DEADLINE_TYPE = "rent_arrears";
-export const LEDGER_CONNECTOR = "odoo";
-export const TERM_LIMIT = 500;
 
 export const ArrearsDetectData = JobBase.extend({
   /** Any civil date; the schedule leaves it out and the job uses today in Paris. */
@@ -83,112 +89,6 @@ async function rows<T extends Record<string, unknown>>(
   return [...(await tx.execute<T>(query))] as T[];
 }
 
-type TermRaw = {
-  rent_term_id: string;
-  lease_id: string;
-  lease_reference: string;
-  lease_status: string;
-  currency: string;
-  term_status: string;
-  period_start: string;
-  period_end: string;
-  due_on: string;
-  total_amount: string | null;
-  allocated: string;
-  pending_allocated: string;
-};
-
-async function overdueTerms(tx: Tx, asOf: string): Promise<TermRaw[]> {
-  return rows<TermRaw>(
-    tx,
-    sql`SELECT t.id AS rent_term_id, t.lease_id, l.reference AS lease_reference,
-               l.status AS lease_status, COALESCE(v.currency, l.currency) AS currency,
-               t.status AS term_status,
-               to_char(t.period_start, 'YYYY-MM-DD') AS period_start,
-               to_char(t.period_end, 'YYYY-MM-DD') AS period_end,
-               to_char(t.due_on, 'YYYY-MM-DD') AS due_on,
-               v.total_amount,
-               COALESCE((SELECT sum(a.amount) FROM payment_allocation a
-                          WHERE a.rent_term_id = t.id AND a.reversed_at IS NULL), 0)::text
-                 AS allocated,
-               COALESCE((SELECT sum(a.amount) FROM payment_allocation a
-                          WHERE a.rent_term_id = t.id AND a.reversed_at IS NULL
-                            AND a.confirmed_by_odoo = false), 0)::text AS pending_allocated
-          FROM rent_term t
-          JOIN lease l ON l.id = t.lease_id
-          LEFT JOIN rent_term_version v ON v.id = t.current_version_id
-         WHERE t.due_on < ${asOf}::date
-           AND t.status NOT IN ('settled', 'cancelled')
-         ORDER BY t.due_on, t.id
-         LIMIT ${TERM_LIMIT}`,
-  );
-}
-
-/** LOY-02: a sum received but not allocated is a credit to qualify, not a settled term. */
-async function unappliedCreditByLease(tx: Tx): Promise<Map<string, string>> {
-  const found = await rows<{ lease_id: string; unapplied: string }>(
-    tx,
-    sql`SELECT lp.lease_id,
-               sum(GREATEST(p.amount - COALESCE(alloc.total, 0), 0))::text AS unapplied
-          FROM payment p
-          JOIN lease_party lp ON lp.person_id = p.payer_person_id
-          LEFT JOIN LATERAL (
-                 SELECT sum(a.amount) AS total FROM payment_allocation a
-                  WHERE a.payment_id = p.id AND a.reversed_at IS NULL
-               ) alloc ON TRUE
-         WHERE p.direction = 'inbound'
-           AND p.status IN ('to_qualify', 'partially_allocated', 'overpaid')
-         GROUP BY lp.lease_id`,
-  );
-  return new Map(found.map((row) => [row.lease_id, row.unapplied]));
-}
-
-async function ledgerFreshness(
-  tx: Tx,
-  asOf: string,
-): Promise<{ healthy: boolean; staleDays: number | null }> {
-  const found = await rows<{ health: string; success_on: string | null }>(
-    tx,
-    sql`SELECT health, to_char(last_success_at AT TIME ZONE 'Europe/Paris', 'YYYY-MM-DD') AS success_on
-          FROM integration_cursor
-         WHERE connector = ${LEDGER_CONNECTOR}
-         ORDER BY last_success_at DESC NULLS LAST
-         LIMIT 1`,
-  );
-  const row = found[0];
-  // No cursor at all: the ledger is not wired yet, which is not a sync incident.
-  if (!row) return { healthy: true, staleDays: null };
-  return {
-    healthy: row.health === "healthy" || row.health === "degraded",
-    staleDays: row.success_on === null ? null : daysLate(row.success_on, asOf),
-  };
-}
-
-type TenantRaw = {
-  lease_id: string;
-  person_id: string;
-  display_name: string;
-  email: string | null;
-};
-
-async function tenantByLease(tx: Tx): Promise<Map<string, TenantRaw>> {
-  const found = await rows<TenantRaw>(
-    tx,
-    sql`SELECT DISTINCT ON (lp.lease_id)
-               lp.lease_id, p.id AS person_id, p.display_name,
-               (SELECT c.value FROM contact_point c
-                 WHERE c.person_id = p.id AND c.kind = 'email' AND c.status = 'active'
-                 ORDER BY c.is_primary DESC, c.created_at
-                 LIMIT 1) AS email
-          FROM lease_party lp
-          JOIN person p ON p.id = lp.person_id
-         WHERE lp.role IN ('holder', 'co_holder')
-           AND (lp.ends_on IS NULL OR lp.ends_on >= current_date)
-         ORDER BY lp.lease_id, lp.is_billing_contact DESC, lp.role, lp.starts_on`,
-  );
-  return new Map(found.map((row) => [row.lease_id, row]));
-}
-
 type ReminderRaw = { lease_id: string; template_code: string; sent_on: string };
 
 async function lastReminderByLease(
@@ -229,8 +129,9 @@ export async function collectArrears(
     if (terms.length === 0) return [];
 
     const credits = await unappliedCreditByLease(tx);
-    const ledger = await ledgerFreshness(tx, asOf);
-    const tenants = await tenantByLease(tx);
+    const ledger = await ledgerFreshness(tx);
+    const ledgerStaleDays =
+      ledger.lastSuccessOn === null ? null : daysLate(ledger.lastSuccessOn, asOf);
     const reminders = await lastReminderByLease(tx);
 
     const byLease = new Map<string, LeaseArrears>();
@@ -246,7 +147,7 @@ export async function collectArrears(
         leaseStatus: raw.lease_status,
         pendingAllocated: raw.pending_allocated,
         unappliedCredit: credits.get(raw.lease_id) ?? "0",
-        ledgerStaleDays: ledger.staleDays,
+        ledgerStaleDays,
         ledgerHealthy: ledger.healthy,
       });
 
@@ -272,16 +173,15 @@ export async function collectArrears(
         continue;
       }
 
-      const tenant = tenants.get(raw.lease_id);
       const reminder = reminders.get(raw.lease_id);
       byLease.set(raw.lease_id, {
         leaseId: raw.lease_id,
         leaseReference: raw.lease_reference,
         leaseStatus: raw.lease_status,
         currency: raw.currency,
-        tenantPersonId: tenant?.person_id ?? null,
-        tenantName: tenant?.display_name ?? null,
-        tenantEmail: tenant?.email ?? null,
+        tenantPersonId: raw.person_id,
+        tenantName: raw.display_name,
+        tenantEmail: raw.contact_value,
         oldestDueOn: term.dueOn,
         daysLate: 0,
         outstanding,

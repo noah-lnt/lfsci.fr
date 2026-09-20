@@ -1,6 +1,15 @@
 import "server-only";
 import type { Tx } from "@lfsci/db";
-import { createCommand, enqueueOutbox, ensureObjectRef, hashPayload, tables } from "@lfsci/db";
+import {
+  createCommand,
+  enqueueOutbox,
+  ensureObjectRef,
+  hashPayload,
+  ledgerFreshness,
+  overdueTerms,
+  tables,
+  unappliedCreditByLease,
+} from "@lfsci/db";
 import {
   type ArrearsQualification,
   autonomyForReminder,
@@ -28,8 +37,6 @@ import { validated, withOrganization } from "../base";
 import type { RpcContext } from "../context";
 
 const OPERATION_NAMESPACE = "3d8b1f5a-9c12-4c6d-9f4b-6a2e7c5d1b90";
-const LEDGER_CONNECTOR = "odoo";
-const TERM_LIMIT = 500;
 /** Far-future availability parks the entry until an approval releases it (ARC-02). */
 const PARKED_UNTIL = new Date(Date.UTC(2999, 0, 1)).toISOString();
 
@@ -76,115 +83,6 @@ async function rows<T extends Record<string, unknown>>(
   query: ReturnType<typeof sql>,
 ): Promise<T[]> {
   return [...(await tx.execute<T>(query))] as T[];
-}
-
-type TermRaw = {
-  rent_term_id: string;
-  lease_id: string;
-  lease_version: number;
-  lease_reference: string;
-  lease_status: string;
-  currency: string;
-  term_status: string;
-  period_start: string;
-  period_end: string;
-  due_on: string;
-  total_amount: string | null;
-  allocated: string;
-  pending_allocated: string;
-  person_id: string | null;
-  display_name: string | null;
-  contact_point_id: string | null;
-  contact_value: string | null;
-};
-
-/**
- * LOY-04 read side. The SQL mirrors the worker's `arrears.detect` query; the
- * rules that qualify and grade live in `@lfsci/domain`, so the two callers
- * cannot drift on the part that matters.
- */
-async function overdueTerms(tx: Tx, asOf: string): Promise<TermRaw[]> {
-  return rows<TermRaw>(
-    tx,
-    sql`SELECT t.id AS rent_term_id, t.lease_id, l.version AS lease_version,
-               l.reference AS lease_reference, l.status AS lease_status,
-               COALESCE(v.currency, l.currency) AS currency, t.status AS term_status,
-               to_char(t.period_start, 'YYYY-MM-DD') AS period_start,
-               to_char(t.period_end, 'YYYY-MM-DD') AS period_end,
-               to_char(t.due_on, 'YYYY-MM-DD') AS due_on,
-               v.total_amount,
-               COALESCE((SELECT sum(a.amount) FROM payment_allocation a
-                          WHERE a.rent_term_id = t.id AND a.reversed_at IS NULL), 0)::text
-                 AS allocated,
-               COALESCE((SELECT sum(a.amount) FROM payment_allocation a
-                          WHERE a.rent_term_id = t.id AND a.reversed_at IS NULL
-                            AND a.confirmed_by_odoo = false), 0)::text AS pending_allocated,
-               tenant.person_id, tenant.display_name,
-               tenant.contact_point_id, tenant.contact_value
-          FROM rent_term t
-          JOIN lease l ON l.id = t.lease_id
-          LEFT JOIN rent_term_version v ON v.id = t.current_version_id
-          LEFT JOIN LATERAL (
-                 SELECT p.id AS person_id, p.display_name,
-                        c.id AS contact_point_id, c.value AS contact_value
-                   FROM lease_party lp
-                   JOIN person p ON p.id = lp.person_id
-                   LEFT JOIN LATERAL (
-                          SELECT cp.id, cp.value FROM contact_point cp
-                           WHERE cp.person_id = p.id AND cp.kind = 'email'
-                             AND cp.status = 'active'
-                           ORDER BY cp.is_primary DESC, cp.created_at
-                           LIMIT 1
-                        ) c ON TRUE
-                  WHERE lp.lease_id = l.id AND lp.role IN ('holder', 'co_holder')
-                    AND (lp.ends_on IS NULL OR lp.ends_on >= ${asOf}::date)
-                  ORDER BY lp.is_billing_contact DESC, lp.role, lp.starts_on
-                  LIMIT 1
-               ) tenant ON TRUE
-         WHERE t.due_on < ${asOf}::date
-           AND t.status NOT IN ('settled', 'cancelled')
-         ORDER BY t.due_on, t.id
-         LIMIT ${TERM_LIMIT}`,
-  );
-}
-
-async function unappliedCreditByLease(tx: Tx): Promise<Map<string, string>> {
-  const found = await rows<{ lease_id: string; unapplied: string }>(
-    tx,
-    sql`SELECT lp.lease_id,
-               sum(GREATEST(p.amount - COALESCE(alloc.total, 0), 0))::text AS unapplied
-          FROM payment p
-          JOIN lease_party lp ON lp.person_id = p.payer_person_id
-          LEFT JOIN LATERAL (
-                 SELECT sum(a.amount) AS total FROM payment_allocation a
-                  WHERE a.payment_id = p.id AND a.reversed_at IS NULL
-               ) alloc ON TRUE
-         WHERE p.direction = 'inbound'
-           AND p.status IN ('to_qualify', 'partially_allocated', 'overpaid')
-         GROUP BY lp.lease_id`,
-  );
-  return new Map(found.map((row) => [row.lease_id, row.unapplied]));
-}
-
-async function ledgerFreshness(
-  tx: Tx,
-  asOf: string,
-): Promise<{ healthy: boolean; staleDays: number | null }> {
-  const found = await rows<{ health: string; success_on: string | null }>(
-    tx,
-    sql`SELECT health,
-               to_char(last_success_at AT TIME ZONE 'Europe/Paris', 'YYYY-MM-DD') AS success_on
-          FROM integration_cursor
-         WHERE connector = ${LEDGER_CONNECTOR}
-         ORDER BY last_success_at DESC NULLS LAST
-         LIMIT 1`,
-  );
-  const row = found[0];
-  if (!row) return { healthy: true, staleDays: null };
-  return {
-    healthy: row.health === "healthy" || row.health === "degraded",
-    staleDays: row.success_on === null ? null : daysLate(row.success_on, asOf),
-  };
 }
 
 type ReminderRaw = {
@@ -266,7 +164,9 @@ async function readScreen(tx: Tx, asOf: string): Promise<RecouvrementScreen> {
   }
 
   const credits = await unappliedCreditByLease(tx);
-  const ledger = await ledgerFreshness(tx, asOf);
+  const ledger = await ledgerFreshness(tx);
+  const ledgerStaleDays =
+    ledger.lastSuccessOn === null ? null : daysLate(ledger.lastSuccessOn, asOf);
   const history = await reminderHistory(tx);
 
   const byLease = new Map<string, ArrearsRow>();
@@ -282,7 +182,7 @@ async function readScreen(tx: Tx, asOf: string): Promise<RecouvrementScreen> {
       leaseStatus: raw.lease_status,
       pendingAllocated: amount(raw.pending_allocated),
       unappliedCredit: amount(credits.get(raw.lease_id)),
-      ledgerStaleDays: ledger.staleDays,
+      ledgerStaleDays,
       ledgerHealthy: ledger.healthy,
     });
 

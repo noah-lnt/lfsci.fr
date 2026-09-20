@@ -42,6 +42,14 @@ export type InboxCardRow = {
   occurredAt: string;
 };
 
+export type InsuranceExceptionRow = {
+  policyId: string;
+  label: string;
+  state: "missing" | "expired";
+  endsOn: string | null;
+  occurredAt: string;
+};
+
 export type MissingDocumentRow = {
   id: string;
   label: string;
@@ -58,6 +66,7 @@ export type CardSource = {
   deadlines: DeadlineCardRow[];
   inboxItems: InboxCardRow[];
   missingDocuments: MissingDocumentRow[];
+  insuranceExceptions: InsuranceExceptionRow[];
 };
 
 const SEVERITY_RANK: Record<ActionCardSeverity, number> = { critical: 0, warning: 1, info: 2 };
@@ -211,6 +220,30 @@ function missingDocumentCards(source: CardSource): Draft[] {
   }));
 }
 
+/** ASS-01: an absent or lapsed attestation is an exception the owner acts on, not a line in a list. */
+function insuranceCards(source: CardSource): Draft[] {
+  return source.insuranceExceptions.map((row) => ({
+    id: `insurance_certificate:${row.policyId}`,
+    kind: "insurance_certificate",
+    why:
+      row.state === "expired"
+        ? `${row.label} : l’attestation est périmée depuis le ${row.endsOn ?? "—"}.`
+        : `${row.label} : aucune attestation n’est rattachée à la police.`,
+    blocking: false,
+    proposedAction: {
+      label: "Rattacher l’attestation",
+      href: "/patrimoine/assurances/attestations",
+    },
+    expectedEffect:
+      "L’exception se ferme et la prochaine échéance de renouvellement est planifiée.",
+    severity: row.state === "expired" ? "critical" : "warning",
+    objectRefs: [{ kind: "insurance_policy", id: row.policyId }],
+    occurredAt: row.occurredAt,
+    groupKey: `insurance_certificate:${row.state}`,
+    groupHref: "/patrimoine/assurances",
+  }));
+}
+
 /**
  * UX-01: identical alerts collapse into one card carrying the count, so a single
  * root cause (a disconnected bank) cannot produce a hundred rent cards.
@@ -261,6 +294,7 @@ export function buildCards(source: CardSource): ActionCard[] {
     ...deadlineCards(source),
     ...inboxCards(source),
     ...missingDocumentCards(source),
+    ...insuranceCards(source),
   ];
   return group(drafts).sort((a, b) => {
     const bySeverity = SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity];

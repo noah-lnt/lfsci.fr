@@ -10,6 +10,7 @@ const EMPTY: CardSource = {
   deadlines: [],
   inboxItems: [],
   missingDocuments: [],
+  insuranceExceptions: [],
 };
 
 const UUID = (suffix: string) => `0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a${suffix}`;
@@ -107,5 +108,25 @@ describe("buildCards", () => {
       ],
     });
     expect(cards[0]?.blocking).toBe(true);
+  });
+
+  it("turns a missing or expired attestation into a card that opens the attestation queue (ASS-01)", () => {
+    const cards = buildCards({
+      ...EMPTY,
+      insuranceExceptions: [
+        {
+          policyId: UUID("7a"),
+          label: "Police PNO-1 (Assureur)",
+          state: "expired",
+          endsOn: "2026-05-31",
+          occurredAt: "2026-01-10T10:00:00.000Z",
+        },
+      ],
+    });
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({ kind: "insurance_certificate", severity: "critical" });
+    expect(cards[0]?.why).toContain("2026-05-31");
+    expect(cards[0]?.proposedAction.href).toBe("/patrimoine/assurances/attestations");
+    expect(cards[0]?.objectRefs).toContainEqual({ kind: "insurance_policy", id: UUID("7a") });
   });
 });

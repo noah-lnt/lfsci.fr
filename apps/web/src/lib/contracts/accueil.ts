@@ -14,6 +14,7 @@ export const ActionCardKind = z.enum([
   "deadline_due",
   "command_exception",
   "document_missing",
+  "insurance_certificate",
 ]);
 export type ActionCardKind = z.infer<typeof ActionCardKind>;
 
