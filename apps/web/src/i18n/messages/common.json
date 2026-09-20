@@ -30,11 +30,18 @@
     "home": "Accueil",
     "patrimoine": "Patrimoine",
     "locations": "Locations",
+    "recouvrement": "Recouvrement",
+    "courteDuree": "Courte durée",
     "finance": "Finance",
+    "charges": "Charges",
+    "assurances": "Assurances",
     "travaux": "Travaux",
+    "sinistres": "Sinistres",
     "inbox": "Inbox",
+    "recherche": "Recherche",
     "echeancier": "Échéancier",
     "documents": "Documents",
+    "parametres": "Paramètres",
     "ops": "Ops"
   },
   "auth": {

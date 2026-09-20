@@ -1,8 +1,9 @@
 import { AppError } from "@lfsci/kernel";
 import { describe, expect, it } from "vitest";
 import { createBreaker } from "../src/breaker";
-import { backoffSeconds, operationRefFor, runOperation } from "../src/jobs/outboxDispatch";
-import { fakeOdooPort } from "./fakes";
+import { runOperation } from "../src/jobs/odooCommands";
+import { backoffSeconds, operationRefFor } from "../src/jobs/outboxDispatch";
+import { fakeDeps, fakeOdooPort } from "./fakes";
 
 function breaker() {
   return createBreaker({ name: "odoo", threshold: 3, cooldownMs: 60_000 });
@@ -52,16 +53,16 @@ describe("dispatch helpers", () => {
   });
 
   it("refuses a command type with no confirmed Odoo entry point", async () => {
-    const odoo = fakeOdooPort({});
+    const deps = fakeDeps({ odoo: fakeOdooPort({}) });
     const command = {
-      commandType: "prepare_rent_accounting",
+      commandType: "convert_acquisition",
       payload: {},
     } as Parameters<typeof runOperation>[1];
 
-    await expect(runOperation(odoo, command, "lfsci:x")).rejects.toMatchObject({
+    await expect(runOperation(deps, command, "lfsci:x")).rejects.toMatchObject({
       code: "RULE_VIOLATION",
     });
-    await runOperation(odoo, command, "lfsci:x").catch((error: unknown) => {
+    await runOperation(deps, command, "lfsci:x").catch((error: unknown) => {
       expect(error).toBeInstanceOf(AppError);
       expect((error as AppError).details).toMatchObject({ reason: "no_typed_operation" });
     });

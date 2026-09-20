@@ -24,6 +24,8 @@ export default [
       "**/test-results/**",
       "packages/db/src/generated/**",
       "apps/web/src/components/ui/**",
+      "docker/odoo/oca/**",
+      "docker/odoo/addons/**",
     ],
   },
   {

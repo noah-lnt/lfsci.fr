@@ -1,0 +1,63 @@
+name: proxy
+
+services:
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    container_name: proxy-socket
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      NETWORKS: 1
+      SERVICES: 1
+      TASKS: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [socket]
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  traefik:
+    image: traefik:v3.7
+    container_name: proxy-traefik
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.endpoint=tcp://socket-proxy:2375
+      - --providers.docker.exposedByDefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      - --accesslog=true
+      - --accesslog.filepath=/var/log/traefik/access.log
+      - --log.level=INFO
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - letsencrypt:/letsencrypt
+      - traefik-logs:/var/log/traefik
+    networks: [web, socket]
+    depends_on: [socket-proxy]
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+volumes:
+  letsencrypt:
+  traefik-logs:
+
+networks:
+  web:
+    name: web
+    external: true
+  socket:
+    internal: true

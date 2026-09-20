@@ -64,6 +64,11 @@ describe("job registry", () => {
       ["deadlines.generate", "0 5 * * *"],
       ["odoo.backsync", "*/10 * * * *"],
       ["irl.refresh", "0 7 20 1,4,7,10 *"],
+      ["retention.purge", "15 3 * * *"],
+      ["search.index", "*/10 * * * *"],
+      ["arrears.detect", "15 6 * * *"],
+      ["email.dispatch", "* * * * *"],
+      ["ical.poll", "0 * * * *"],
     ]);
     for (const job of scheduled) expect(job.schedule?.tz).toBe("Europe/Paris");
   });

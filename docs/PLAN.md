@@ -89,3 +89,15 @@ Each slice: contract + module + i18n + page + e2e with axe, full CRUD (`ux.md`),
 ## 8. Suggested order and parallelism
 
 Slice 1 first, alone, because everything financial depends on it and it needs the owner's Odoo work (P1–P4). Slices 2 and 3 run in parallel after it (different packages: web modules versus `packages/ai` + worker). Slice 4 follows 2 and 3. Slice 5 can start as soon as P6 is answered, in parallel with 2 and 3, and must be finished before 6. Slice 6 is last and is done with the accountant, not alone.
+
+## 9. Status — 2026-09-20, end of the autonomous build
+
+| Slice | State | What remains |
+|---|---|---|
+| 0 | waiting on the owner | P1 to P8 are all still open; nothing here needed them to be coded |
+| 1 | coded, proven on the fake server and a local Odoo 18 | the run against the Online 19 duplicate (needs P1 to P4); the accountant's account codes, still defaults |
+| 2 | coded, every row from 2a to 2i | 2j only where a screen still reads a raw table; the Airbnb header names and the reminder delays need the owner |
+| 3 | coded except what needs the corpus | the evaluation set (item 1) and the Ollama-versus-Mistral comparison (item 4) wait for real documents and P5 |
+| 4 | coded except item 5 | the `Link` + `buttonVariants()` refactor of the navigation buttons; passkeys wait for a better-auth plugin |
+| 5 | assets and runbook written, nothing run on the server | P6 measurements, then the first deploy and the restore drill |
+| 6 | not started | the dry-run importer, opening balances and cut-over need the owner's exports first |
