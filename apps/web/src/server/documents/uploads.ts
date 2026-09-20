@@ -42,6 +42,42 @@ export async function createUpload(
     });
   }
 
+  // A retry after a failed PUT or finalize must not leave an orphan and create a
+  // twin: the same bytes still waiting for their upload get the same document.
+  const pending = await tx
+    .select({
+      documentId: tables.documentVersion.documentId,
+      uploadId: tables.documentVersion.id,
+      storageKey: tables.documentVersion.storageKey,
+    })
+    .from(tables.documentVersion)
+    .innerJoin(tables.document, eq(tables.document.id, tables.documentVersion.documentId))
+    .where(
+      and(
+        eq(tables.documentVersion.organizationId, scope.organizationId),
+        eq(tables.documentVersion.sha256, input.sha256),
+        eq(tables.documentVersion.sequence, 1),
+        eq(tables.document.status, "uploading"),
+      ),
+    )
+    .limit(1);
+  const reused = pending[0];
+  if (reused) {
+    const presigned = await store.presignUpload({
+      key: reused.storageKey,
+      contentType: input.contentType,
+      contentLength: input.contentLength,
+    });
+    return {
+      uploadId: reused.uploadId,
+      documentId: reused.documentId,
+      url: presigned.url,
+      method: "PUT",
+      headers: presigned.headers,
+      expiresAt: new Date(Date.now() + presigned.expiresInSeconds * 1000).toISOString(),
+    };
+  }
+
   const documentId = uuidv7();
   const uploadId = uuidv7();
   const storageKey = documentKey({

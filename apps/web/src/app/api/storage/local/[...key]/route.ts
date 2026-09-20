@@ -1,5 +1,4 @@
 import { MAX_UPLOAD_BYTES } from "@lfsci/storage";
-import { isDevOrTest } from "@/server/env";
 import { localStorageDriver } from "@/server/storage";
 
 export const runtime = "nodejs";
@@ -14,9 +13,8 @@ function refused(status: number, message: string): Response {
   });
 }
 
-/** Development stand-in for the object store; never mounted in production. */
+/** Filesystem stand-in for the object store; answers only while the local driver is enabled. */
 async function target(request: Request, params: Params["params"], method: "PUT" | "GET") {
-  if (!isDevOrTest()) return { error: refused(404, "not found") } as const;
   const store = localStorageDriver();
   if (!store) return { error: refused(404, "not found") } as const;
 

@@ -4,7 +4,15 @@ import { validate as isUuid, v7 as uuidv7 } from "uuid";
 
 const REQUEST_ID_HEADER = "x-request-id";
 
-export function contentSecurityPolicy(nonce: string, isDev: boolean): string {
+export type PolicyContext = { isDev: boolean; servedOverTls: boolean };
+
+/** The app's own URL decides, never the environment name: a CI or LAN deployment on plain http must not upgrade. */
+export function servedOverTls(env: Record<string, string | undefined> = process.env): boolean {
+  return (env.APP_URL ?? env.BETTER_AUTH_URL ?? "").startsWith("https://");
+}
+
+export function contentSecurityPolicy(nonce: string, context: PolicyContext): string {
+  const { isDev, servedOverTls: tls } = context;
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
@@ -19,8 +27,9 @@ export function contentSecurityPolicy(nonce: string, isDev: boolean): string {
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
-    // Would upgrade http://localhost to https and break every dev request.
-    ...(isDev ? [] : ["upgrade-insecure-requests"]),
+    // Chrome exempts localhost from the upgrade; WebKit does not, and every
+    // script then fails TLS. Only a site that really answers on https may ask.
+    ...(tls ? ["upgrade-insecure-requests"] : []),
   ].join("; ");
 }
 
@@ -29,7 +38,8 @@ export function proxy(request: NextRequest): NextResponse {
   const requestId = incoming && isUuid(incoming) ? incoming : uuidv7();
   const nonce = btoa(uuidv7());
   const isDev = process.env.NODE_ENV === "development";
-  const csp = contentSecurityPolicy(nonce, isDev);
+  const tls = servedOverTls();
+  const csp = contentSecurityPolicy(nonce, { isDev, servedOverTls: tls });
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set(REQUEST_ID_HEADER, requestId);
@@ -43,7 +53,7 @@ export function proxy(request: NextRequest): NextResponse {
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("Permissions-Policy", "camera=(self), microphone=(self), geolocation=()");
-  if (!isDev) {
+  if (tls) {
     response.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
   }
   return response;

@@ -38,8 +38,13 @@ export function localStorageDriver(): LocalStorage | null {
   return local;
 }
 
-/** No S3 credentials outside production means the filesystem driver, never a half-configured S3. */
+/**
+ * No S3 credentials outside production means the filesystem driver, never a
+ * half-configured S3. A production build under test opts in explicitly with
+ * STORAGE_DRIVER=local; the production stack never sets it.
+ */
 export function localDriverEnabled(): boolean {
+  if (process.env.STORAGE_DRIVER === "local") return true;
   return isDevOrTest() && !(process.env.STORAGE_ACCESS_KEY_ID ?? "").trim();
 }
 
