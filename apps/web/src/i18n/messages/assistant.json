@@ -1,0 +1,24 @@
+{
+  "assistant": {
+    "title": "Assistant",
+    "description": "Questions sur vos lots, vos baux et vos documents ; les actions deviennent des commandes à valider.",
+    "placeholder": "Que dois-je faire aujourd’hui ?",
+    "send": "Envoyer",
+    "sending": "Réponse en cours…",
+    "conversation": "Conversation",
+    "you": "Vous",
+    "toolCall": "Outil",
+    "tool": {
+      "get_action_required": "Ce qui nécessite mon intervention",
+      "summarize_object": "Résumé d’un objet",
+      "search_memory": "Recherche autorisée",
+      "explain_amount": "Décomposition d’un montant",
+      "propose_command": "Commande proposée"
+    },
+    "proposal": "Commande préparée",
+    "proposalHint": "Rien n’a été exécuté : la commande attend votre validation.",
+    "openProposal": "Ouvrir la validation",
+    "sources": "Sources",
+    "emptyState": "Posez une question : « Que dois-je faire aujourd’hui ? », « Résume-moi ce lot », « Combien la SCI doit-elle à l’associé ? »."
+  }
+}

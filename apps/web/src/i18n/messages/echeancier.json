@@ -1,0 +1,39 @@
+{
+  "echeancier": {
+    "title": "Échéancier",
+    "description": "Retard, 7, 30, 90 et 365 jours",
+    "empty": "Aucune échéance ouverte",
+    "emptyHint": "Les loyers, révisions d’indice, échéances de crédit, assurances et obligations réglementaires apparaîtront ici.",
+    "horizon": {
+      "overdue": "En retard",
+      "d7": "7 jours",
+      "d30": "30 jours",
+      "d90": "90 jours",
+      "d365": "365 jours",
+      "later": "Plus tard"
+    },
+    "dueOn": "Échéance",
+    "originalDueOn": "Date initiale",
+    "priority": { "low": "Basse", "normal": "Normale", "high": "Haute", "critical": "Critique" },
+    "status": {
+      "planned": "Planifiée",
+      "to_process": "À traiter",
+      "done": "Accomplie",
+      "postponed": "Reportée",
+      "blocked": "Bloquée",
+      "cancelled": "Annulée"
+    },
+    "complete": "Accomplir",
+    "postpone": "Reporter",
+    "postponeTitle": "Reporter l’échéance",
+    "newDueOn": "Nouvelle date",
+    "reason": "Motif du report",
+    "reasonPlaceholder": "Pourquoi cette échéance est-elle reportée ?",
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "filters": "Filtres",
+    "allTypes": "Tous les types",
+    "completed": "Échéance accomplie.",
+    "postponed": "Échéance reportée ; la date initiale est conservée."
+  }
+}

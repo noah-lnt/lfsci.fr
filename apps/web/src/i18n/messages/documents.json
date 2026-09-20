@@ -1,0 +1,69 @@
+{
+  "documents": {
+    "title": "Documents",
+    "add": "Déposer un document",
+    "capture": "Prendre une photo",
+    "dropzone": "Glissez un fichier ici, ou choisissez-le",
+    "choose": "Choisir un fichier",
+    "accepted": "PDF ou image (PNG, JPEG, WebP, HEIC), 50 Mo maximum.",
+    "empty": "Aucun document. Déposez une facture, un bail signé ou une photo : elle sera rattachée à cet objet.",
+    "loadMore": "Charger plus",
+    "download": "Télécharger",
+    "downloading": "Préparation du lien…",
+    "filters": {
+      "search": "Rechercher un document",
+      "searchPlaceholder": "Titre du document",
+      "nature": "Nature",
+      "natureAll": "Toutes les natures",
+      "periodFrom": "Période du",
+      "periodTo": "au",
+      "clear": "Effacer les filtres",
+      "clearOne": "Retirer ce filtre",
+      "object": "Objet"
+    },
+    "columns": {
+      "title": "Document",
+      "nature": "Nature",
+      "size": "Taille",
+      "date": "Déposé le",
+      "object": "Rattaché à"
+    },
+    "nature": {
+      "to_qualify": "À qualifier",
+      "invoice": "Facture",
+      "lease": "Bail",
+      "receipt": "Quittance",
+      "photo": "Photo",
+      "report": "Rapport",
+      "insurance": "Assurance",
+      "other": "Autre"
+    },
+    "form": {
+      "title": "Titre",
+      "nature": "Nature",
+      "periodStart": "Période — début",
+      "periodEnd": "Période — fin",
+      "confidentiality": "Confidentialité"
+    },
+    "confidentiality": {
+      "public_to_tenant": "Visible du locataire",
+      "internal": "Interne",
+      "restricted": "Restreint",
+      "sensitive": "Sensible"
+    },
+    "queue": {
+      "title": "Dépôts en cours",
+      "local": "enregistré sur cet appareil",
+      "uploading": "envoi en cours…",
+      "synced": "synchronisé",
+      "failed": "échec de l’envoi",
+      "retry": "Réessayer",
+      "pendingWarning": "{count} élément(s) pas encore synchronisé(s) : restez sur la page jusqu’à la fin de l’envoi.",
+      "memoryOnly": "La file d’attente est en mémoire : un rechargement de la page perd les dépôts non synchronisés."
+    },
+    "errors": {
+      "tooLarge": "Fichier trop volumineux (50 Mo maximum).",
+      "unsupported": "Format non pris en charge : PDF ou image uniquement."
+    }
+  }
+}

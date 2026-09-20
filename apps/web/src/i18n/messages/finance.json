@@ -1,0 +1,264 @@
+{
+  "finance": {
+    "title": "Finance",
+    "description": "Dépenses, crédits, comptes courants, actifs et banques",
+    "tabs": {
+      "overview": "Aperçu",
+      "expenses": "Dépenses",
+      "loans": "Crédits",
+      "cca": "CCA",
+      "assets": "Actifs",
+      "banks": "Banques"
+    },
+    "kpi": {
+      "banks": "Banques",
+      "treasury": "Trésorerie prévue",
+      "debt": "Dette totale",
+      "cca": "Solde CCA",
+      "netBookValue": "VNC totale",
+      "nextInstallment": "Prochaine échéance",
+      "asOf": "au",
+      "sourceOdoo": "source Odoo",
+      "sourceProjection": "projection SaaS",
+      "unallocated": "Charges non affectées"
+    },
+    "forecast": {
+      "title": "Prévision de trésorerie",
+      "description": "Le solde d’ouverture est le seul montant réalisé ; un encaissement attendu ne devient jamais de la trésorerie disponible.",
+      "horizon30": "30 jours",
+      "horizon90": "90 jours",
+      "horizon365": "365 jours",
+      "opening": "Solde d’ouverture",
+      "closing": "Solde projeté",
+      "balance": "Solde",
+      "inflow": "Encaissements prévus",
+      "outflow": "Décaissements engagés",
+      "date": "Date",
+      "showTable": "Afficher le tableau de données",
+      "hideTable": "Masquer le tableau de données",
+      "tableCaption": "Prévision de trésorerie, jour par jour",
+      "missing": "Sources absentes :",
+      "empty": "Aucun mouvement prévu sur cet horizon.",
+      "legend": {
+        "realised": "Réalisé (solde bancaire)",
+        "planned": "Prévu (loyers attendus)",
+        "committed": "Engagé (échéances, dépenses)"
+      }
+    },
+    "expenses": {
+      "title": "Dépenses",
+      "new": "Nouvelle dépense",
+      "empty": "Aucune dépense enregistrée. Capturez un ticket ou une facture pour commencer.",
+      "columns": {
+        "issuedOn": "Date",
+        "supplier": "Fournisseur",
+        "reference": "Référence",
+        "total": "Total TTC",
+        "payer": "Payeur",
+        "status": "Statut",
+        "unallocated": "Non affecté"
+      },
+      "form": {
+        "title": "Capturer une dépense",
+        "description": "Fournisseur, montants, lignes et ventilation : une seule saisie.",
+        "legalEntity": "SCI",
+        "supplier": "Fournisseur",
+        "supplierNew": "Nouveau fournisseur",
+        "supplierPick": "Choisir un fournisseur existant",
+        "supplierName": "Nom du fournisseur",
+        "documentKind": "Type de pièce",
+        "issuedOn": "Date d’émission",
+        "reference": "Référence fournisseur",
+        "payer": "Payeur",
+        "paidByPerson": "Associé payeur",
+        "lines": "Lignes",
+        "lineDescription": "Libellé",
+        "lineAmount": "Montant TTC",
+        "lineRecoverable": "Part récupérable",
+        "addLine": "Ajouter une ligne",
+        "removeLine": "Retirer la ligne",
+        "allocation": "Ventilation",
+        "allocationHint": "Les parts d’une ligne doivent totaliser 100 %. La répartition au centime est calculée par le domaine.",
+        "target": "Cible",
+        "targetUnit": "Lot",
+        "targetBuilding": "Partie commune d’immeuble",
+        "targetEntity": "SCI",
+        "share": "Part (%)",
+        "addTarget": "Ajouter une cible",
+        "removeTarget": "Retirer la cible",
+        "previewTotal": "Total ventilé",
+        "previewResidual": "Résidu assumé",
+        "sharesInvalid": "Les parts doivent totaliser 100 %.",
+        "totalInclTax": "Total TTC",
+        "submit": "Enregistrer la dépense",
+        "submitting": "Enregistrement…",
+        "created": "Dépense enregistrée."
+      },
+      "detail": {
+        "title": "Dépense",
+        "lines": "Lignes et ventilation",
+        "allocations": "Affectations",
+        "unallocated": "Résidu non affecté",
+        "validate": "Valider",
+        "validating": "Validation…",
+        "validated": "Commande comptable préparée au niveau {level} : elle attend une validation avant tout envoi vers Odoo.",
+        "commandId": "Commande",
+        "newSupplier": "Fournisseur nouveau : décision relevée au niveau D.",
+        "partnerPayer": "Payé personnellement : décision relevée au niveau D.",
+        "noLines": "Cette dépense n’a pas encore de ligne."
+      }
+    },
+    "loans": {
+      "title": "Crédits",
+      "new": "Nouveau crédit",
+      "empty": "Aucun crédit enregistré.",
+      "columns": {
+        "lender": "Prêteur",
+        "reference": "Référence",
+        "principal": "Capital emprunté",
+        "rate": "Taux nominal",
+        "duration": "Durée",
+        "status": "Statut"
+      },
+      "form": {
+        "title": "Enregistrer un crédit",
+        "description": "L’échéancier contractuel est construit à la création et conservé en version 1.",
+        "legalEntity": "SCI",
+        "lender": "Prêteur",
+        "reference": "Référence",
+        "principal": "Capital emprunté",
+        "durationMonths": "Durée (mois)",
+        "nominalRate": "Taux nominal (%)",
+        "insuranceRate": "Taux d’assurance (%)",
+        "firstDueOn": "Première échéance",
+        "releasedOn": "Date de déblocage",
+        "submit": "Créer le crédit et l’échéancier",
+        "submitting": "Création…",
+        "created": "Crédit et échéancier créés."
+      },
+      "schedule": {
+        "title": "Échéancier",
+        "number": "N°",
+        "dueOn": "Échéance",
+        "principal": "Capital",
+        "interest": "Intérêts",
+        "insurance": "Assurance",
+        "fees": "Frais",
+        "total": "Total",
+        "remaining": "CRD",
+        "match": "Prélèvement",
+        "matchExact": "Rapproché",
+        "matchMismatch": "Écart",
+        "matchNone": "Attendu",
+        "totals": "Totaux",
+        "sumOk": "La somme des capitaux amortis égale le capital emprunté.",
+        "sumKo": "La somme des capitaux amortis diffère du capital emprunté.",
+        "empty": "Aucune échéance."
+      }
+    },
+    "cca": {
+      "title": "Comptes courants d’associés",
+      "empty": "Aucun compte courant d’associé.",
+      "balance": "Solde projeté",
+      "odooBalance": "Solde Odoo",
+      "direction": {
+        "owed_to_partner": "La SCI doit à l’associé",
+        "owed_by_partner": "L’associé doit à la SCI",
+        "settled": "Soldé"
+      },
+      "columns": {
+        "occurredOn": "Date",
+        "kind": "Nature",
+        "amount": "Montant",
+        "balance": "Solde",
+        "status": "Statut"
+      },
+      "record": "Enregistrer un mouvement",
+      "form": {
+        "title": "Enregistrer un mouvement de compte courant",
+        "account": "Compte courant",
+        "kind": "Nature",
+        "amount": "Montant",
+        "occurredOn": "Date",
+        "justification": "Justification",
+        "submit": "Enregistrer",
+        "submitting": "Enregistrement…",
+        "recorded": "Mouvement enregistré en attente de validation (niveau {level})."
+      },
+      "kinds": {
+        "contribution": "Apport",
+        "expense_paid_personally": "Dépense payée personnellement",
+        "repayment": "Remboursement",
+        "interest": "Intérêts",
+        "offset": "Compensation",
+        "correction": "Correction"
+      }
+    },
+    "assets": {
+      "title": "Immobilisations",
+      "empty": "Aucune immobilisation.",
+      "columns": {
+        "label": "Actif",
+        "gross": "Valeur brute",
+        "land": "Terrain",
+        "depreciable": "Base amortissable",
+        "accumulated": "Amortissements",
+        "nbv": "VNC",
+        "status": "Statut"
+      },
+      "landNote": "Le terrain n’est jamais amorti ; aucune proportion terrain/construction n’est imposée.",
+      "computedOn": "VNC calculée au"
+    },
+    "banks": {
+      "title": "Comptes bancaires",
+      "empty": "Aucun compte bancaire.",
+      "columns": {
+        "label": "Compte",
+        "bank": "Banque",
+        "iban": "IBAN",
+        "purpose": "Usage",
+        "balance": "Solde",
+        "asOf": "À la date du",
+        "source": "Source",
+        "feed": "Dernier flux"
+      },
+      "note": "Une égalité de soldes ne prouve pas que tous les mouvements sont correctement affectés."
+    },
+    "status": {
+      "captured": "Capturée",
+      "extracted": "Extraite",
+      "to_review": "À revoir",
+      "validated": "Validée",
+      "posted": "Comptabilisée",
+      "paid": "Payée",
+      "reconciled": "Rapprochée",
+      "cancelled": "Annulée",
+      "duplicate_suspect": "Doublon suspecté",
+      "rejected": "Rejetée",
+      "proposed": "Proposé",
+      "under_review": "En revue",
+      "draft": "Brouillon",
+      "active": "Actif",
+      "renegotiated": "Renégocié",
+      "repaid": "Remboursé",
+      "running": "En cours",
+      "fully_depreciated": "Totalement amorti",
+      "disposed": "Sorti",
+      "closed": "Clos"
+    },
+    "payer": {
+      "entity": "SCI",
+      "partner": "Associé",
+      "tenant": "Locataire",
+      "insurer": "Assureur",
+      "unknown": "Inconnu"
+    },
+    "documentKind": {
+      "receipt": "Ticket",
+      "invoice": "Facture",
+      "credit_note": "Avoir",
+      "e_invoice": "Facture électronique",
+      "statement": "Relevé"
+    }
+  }
+}

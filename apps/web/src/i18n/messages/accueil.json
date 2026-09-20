@@ -1,0 +1,43 @@
+{
+  "accueil": {
+    "title": "Ce qui nécessite mon intervention",
+    "description": "Validations, anomalies, retards et échéances proches",
+    "empty": "Rien ne nécessite votre intervention.",
+    "emptyHint": "Les contrôles de la nuit sont complets : aucune carte n’est ouverte.",
+    "notEmptyYet": "Aucune carte n’est ouverte, mais les contrôles ne sont pas complets : cet écran ne peut pas affirmer que tout va bien.",
+    "cardsTitle": "À traiter",
+    "grouped": "{count} éléments regroupés",
+    "blocking": "Bloquant",
+    "why": "Pourquoi",
+    "effect": "Effet attendu",
+    "severity": { "critical": "Critique", "warning": "À traiter", "info": "Pour information" },
+    "kind": {
+      "approval_pending": "Validation",
+      "late_rent": "Loyer non reçu",
+      "inbox_ambiguous": "Inbox",
+      "deadline_due": "Échéance",
+      "command_exception": "Commande",
+      "document_missing": "Pièce manquante"
+    },
+    "banner": {
+      "title": "Contrôles de la nuit",
+      "complete": "Contrôles complets",
+      "partial": "Contrôles partiels",
+      "sources_unavailable": "Sources indisponibles",
+      "lastRun": "Dernière exécution",
+      "failed": "Contrôles en échec"
+    },
+    "indicators": {
+      "title": "Situation",
+      "occupancy": "Occupation",
+      "occupancyValue": "{occupied} lot(s) sur {total}",
+      "collectedThisMonth": "Encaissements du mois",
+      "cash": "Trésorerie",
+      "debt": "Dette",
+      "partnerAccounts": "Comptes courants d’associés",
+      "netBookValue": "Valeur nette comptable",
+      "asOf": "au {date}",
+      "unknown": "donnée absente"
+    }
+  }
+}
