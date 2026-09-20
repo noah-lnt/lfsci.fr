@@ -1,4 +1,4 @@
-import { decimal, sum, toMoney } from "@lfsci/domain";
+import { decimal, neg, sum, toMoney } from "@lfsci/domain";
 import { groupPersons, groupSuppliers, resolve, resolvePerson, resolveSupplier } from "./matching";
 import type {
   Ambiguity,
@@ -9,8 +9,10 @@ import type {
   Match,
   PersonRecord,
   Plan,
+  Proposal,
   RecordKind,
   Rejection,
+  RentTermRecord,
   Resolutions,
   SourceRead,
   SourceRecord,
@@ -57,9 +59,70 @@ function moneyOf(record: SourceRecord): string | null {
       return record.amount;
     case "booking":
       return record.accommodationAmount;
+    case "deposit_movement":
+    case "cca_movement":
+    case "loan_movement":
+      return record.amount;
     default:
       return null;
   }
+}
+
+/** The monthly total seen most often; a tie goes to the most recent month. */
+function usualMonthlyTotal(terms: RentTermRecord[]): string {
+  const byMonth = new Map<string, string[]>();
+  for (const term of terms) {
+    const bucket = byMonth.get(term.periodStart) ?? [];
+    bucket.push(term.total);
+    byMonth.set(term.periodStart, bucket);
+  }
+  const monthly = [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, values]) => toMoney(sum(values.map((v) => decimal(v)))));
+  let best: { total: string; count: number } | null = null;
+  for (const total of monthly) {
+    const count = monthly.filter((v) => v === total).length;
+    if (best === null || count >= best.count) best = { total, count };
+  }
+  return best?.total ?? "0.00";
+}
+
+/**
+ * A tenant whose rents were received but who has no lease anywhere: the lease is
+ * proposed from the receipts, the usual monthly total giving the rent and the charges.
+ */
+function inferLease(terms: RentTermRecord[], records: SourceRecord[]): LeaseRecord | null {
+  const first = [...terms].sort((a, b) => a.periodStart.localeCompare(b.periodStart))[0];
+  if (!first) return null;
+  const rent = terms.filter((t) => t.component === "rent");
+  const charges = terms.filter((t) => t.component === "charges");
+  const deposit = sum(
+    records.flatMap((r) =>
+      r.kind === "deposit_movement" &&
+      r.odooPartnerId === first.odooPartnerId &&
+      r.entity === first.entity
+        ? [r.direction === "received" ? decimal(r.amount) : neg(decimal(r.amount))]
+        : [],
+    ),
+  );
+  return {
+    source: first.source,
+    kind: "lease",
+    ref: `res.partner:${first.odooPartnerId}`,
+    entity: first.entity,
+    odooCompanyId: first.odooCompanyId,
+    reference: `BAIL-ODOO-${first.odooPartnerId}`,
+    tenantName: first.partnerName,
+    unitCode: null,
+    leaseKind: "other",
+    startsOn: first.periodStart,
+    endsOn: null,
+    rent: usualMonthlyTotal(rent),
+    charges: usualMonthlyTotal(charges),
+    deposit: deposit.gt(0) ? toMoney(deposit) : null,
+    paymentDay: null,
+    inferred: true,
+  };
 }
 
 export function buildPlan(input: BuildPlanInput): Plan {
@@ -70,6 +133,7 @@ export function buildPlan(input: BuildPlanInput): Plan {
   const matches: Match[] = [];
   const ambiguities: Ambiguity[] = [];
   const deferrals: Deferral[] = [];
+  const proposals: Proposal[] = [];
   const resolutions: Resolutions = {
     entities: {},
     persons: {},
@@ -274,6 +338,37 @@ export function buildPlan(input: BuildPlanInput): Plan {
     return out;
   }
 
+  const rentTerms = records.filter((r): r is RentTermRecord => r.kind === "rent_term");
+  const byTenant = new Map<string, { entityId: string; tenant: Target; terms: RentTermRecord[] }>();
+  for (const record of rentTerms) {
+    if (isRejected(record)) continue;
+    const entityId = resolveEntity(record);
+    const tenant = resolutions.persons[`res.partner:${record.odooPartnerId}`];
+    if (entityId === null || !tenant) continue;
+    const key = `${entityId}|${"existingId" in tenant ? tenant.existingId : tenant.create}`;
+    const group = byTenant.get(key) ?? { entityId, tenant, terms: [] };
+    group.terms.push(record);
+    byTenant.set(key, group);
+  }
+  for (const group of byTenant.values()) {
+    if (leasesForTenant(group.entityId, group.tenant).length > 0) continue;
+    const lease = inferLease(group.terms, records);
+    if (lease === null) continue;
+    records.push(lease);
+    leaseRecords.push(lease);
+    resolutions.leaseTenants[lease.ref] = group.tenant;
+    resolutions.leases[lease.ref] = { create: `lease:${lease.reference}` };
+    const last = group.terms
+      .map((t) => t.dueOn)
+      .sort()
+      .at(-1);
+    proposals.push({
+      kind: "lease",
+      ref: lease.ref,
+      detail: `${lease.reference} pour ${lease.tenantName} : ${group.terms.length} encaissement(s) du ${lease.startsOn} au ${last}, loyer ${lease.rent}, charges ${lease.charges}${lease.deposit ? `, dépôt ${lease.deposit}` : ""} — aucun bail dans l’application ni dans les tableaux ; la date de fin, le lot et le jour de paiement sont à compléter`,
+    });
+  }
+
   for (const record of records) {
     if (record.kind !== "rent_term" || isRejected(record)) continue;
     const entityId = resolveEntity(record);
@@ -351,6 +446,18 @@ export function buildPlan(input: BuildPlanInput): Plan {
   }
 
   for (const record of records) {
+    if (
+      record.kind === "deposit_movement" ||
+      record.kind === "cca_movement" ||
+      record.kind === "loan_movement"
+    ) {
+      deferrals.push({
+        kind: record.kind,
+        ref: record.ref,
+        reason: "entered_in_app",
+        detail: `${record.odooMoveName} ${record.occurredOn} ${record.direction} ${record.amount} (${record.partnerName}) : mouvement à saisir dans l’application, le rapport de soldes le rapproche`,
+      });
+    }
     if (record.kind === "bank_line") {
       deferrals.push({
         kind: "bank_line",
@@ -406,6 +513,14 @@ export function buildPlan(input: BuildPlanInput): Plan {
       blockers.push(
         `${read.label} : aucun enregistrement lu — extraction défaillante ou source vide, à vérifier avant tout import`,
       );
+    const bound = read.records.filter((r) => entityOf(r) !== null && r.kind !== "bank_line");
+    const unknown = bound.filter((r) =>
+      rejections.some((x) => x.reason === "unknown_entity" && x.kind === r.kind && x.ref === r.ref),
+    );
+    if (bound.length > 0 && unknown.length === bound.length)
+      blockers.push(
+        `${read.label} : aucune société de cette source n’existe dans l’application — créez-la (avec son id Odoo) avant l’import`,
+      );
   }
   if (ambiguities.length > 0)
     blockers.push(
@@ -430,6 +545,7 @@ export function buildPlan(input: BuildPlanInput): Plan {
     matches,
     ambiguities,
     deferrals,
+    proposals,
     resolutions,
     perEntity,
     blockers,

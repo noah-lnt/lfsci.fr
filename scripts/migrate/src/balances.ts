@@ -9,6 +9,7 @@ import { CsvError, parseCsv } from "./csv";
 import { mapTable, parseMoney, resolveMapping } from "./mapping";
 import { SourceUnreachable } from "./model";
 import { nameKey } from "./normalise";
+import { withCopy } from "./sources/odoo-copy";
 import { readCsvFile } from "./sources/spreadsheet";
 
 export type BalanceKind = "tenant" | "deposit" | "loan" | "cca" | "bank" | "nbv";
@@ -332,19 +333,12 @@ export function createOdooLedger(
         { domain: [["type", "=", "bank"]], fields: ["id", "name", "default_account_id"] },
         BankJournal,
       );
-      const journalByAccount = new Map(
-        journals.flatMap((j) =>
-          j.default_account_id === false ? [] : [[j.default_account_id[0], j] as const],
-        ),
+      const bankJournals: BankJournalRef[] = journals.flatMap((j) =>
+        j.default_account_id === false
+          ? []
+          : [{ id: j.id, name: j.name, accountId: j.default_account_id[0] }],
       );
-      const sums = new Map<string, { line: Omit<BalanceLine, "amount">; values: string[] }>();
-      const add = (line: Omit<BalanceLine, "amount">, value: number, negate: boolean) => {
-        const key = `${line.odooCompanyId}:${line.kind}:${line.odooPartnerId}:${line.odooJournalId}`;
-        const amount = decimal(String(value));
-        const entry = sums.get(key) ?? { line, values: [] };
-        entry.values.push((negate ? neg(amount) : amount).toString());
-        sums.set(key, entry);
-      };
+      const lines: LedgerLine[] = [];
       let offset = 0;
       for (;;) {
         const page = await call(
@@ -363,52 +357,19 @@ export function createOdooLedger(
         );
         for (const line of page) {
           const accountId = line.account_id === false ? null : line.account_id[0];
-          const code = accountId === null ? "" : (codeById.get(accountId) ?? "");
-          const entity = line.company_id === false ? "" : line.company_id[1];
-          const odooCompanyId = line.company_id === false ? null : line.company_id[0];
-          const partner = line.partner_id === false ? null : line.partner_id;
-          const base = { entity, odooCompanyId, odooPartnerId: null, odooJournalId: null };
-          if (line.account_type === "asset_cash" && line.account_id !== false) {
-            const journal = journalByAccount.get(line.account_id[0]);
-            add(
-              {
-                ...base,
-                kind: "bank",
-                reference: journal?.name ?? line.account_id[1],
-                odooJournalId: journal?.id ?? null,
-              },
-              line.balance,
-              false,
-            );
-          } else if (code.startsWith(prefixes.receivable)) {
-            add(
-              {
-                ...base,
-                kind: "tenant",
-                reference: partner ? partner[1] : "(sans tiers)",
-                odooPartnerId: partner ? partner[0] : null,
-              },
-              line.balance,
-              false,
-            );
-          } else if (code.startsWith(prefixes.cca)) {
-            add(
-              {
-                ...base,
-                kind: "cca",
-                reference: partner ? partner[1] : "(sans tiers)",
-                odooPartnerId: partner ? partner[0] : null,
-              },
-              line.balance,
-              true,
-            );
-          } else if (code.startsWith(prefixes.deposit)) {
-            add({ ...base, kind: "deposit", reference: "dépôts de garantie" }, line.balance, true);
-          } else if (code.startsWith(prefixes.loan)) {
-            add({ ...base, kind: "loan", reference: "emprunts" }, line.balance, true);
-          } else if (code.startsWith(prefixes.asset) || code.startsWith(prefixes.depreciation)) {
-            add({ ...base, kind: "nbv", reference: "valeur nette comptable" }, line.balance, false);
-          }
+          lines.push({
+            code: accountId === null ? "" : (codeById.get(accountId) ?? ""),
+            accountType: line.account_type,
+            accountId: accountId ?? 0,
+            accountLabel: line.account_id === false ? "" : line.account_id[1],
+            balance: String(line.balance),
+            entity: line.company_id === false ? "" : line.company_id[1],
+            odooCompanyId: line.company_id === false ? null : line.company_id[0],
+            partner:
+              line.partner_id === false
+                ? null
+                : { id: line.partner_id[0], name: line.partner_id[1] },
+          });
         }
         if (page.length < PAGE) break;
         offset += PAGE;
@@ -416,11 +377,160 @@ export function createOdooLedger(
       return {
         asOf,
         source: `Odoo ${client.baseUrl} (account.move.line comptabilisées au ${asOf})`,
-        lines: [...sums.values()].map(({ line, values }) => ({
-          ...line,
-          amount: toMoney(sum(values.map((v) => decimal(v)))),
-        })),
+        lines: sumLedgerLines(lines, bankJournals, prefixes),
       };
+    },
+  };
+}
+
+type LedgerLine = {
+  code: string;
+  accountType: string;
+  accountId: number;
+  accountLabel: string;
+  balance: string;
+  entity: string;
+  odooCompanyId: number | null;
+  partner: { id: number; name: string } | null;
+};
+
+type BankJournalRef = { id: number; name: string; accountId: number };
+
+/** Groups posted lines by family; the same rule serves the RPC ledger and the restored copy. */
+export function sumLedgerLines(
+  lines: Iterable<LedgerLine>,
+  journals: BankJournalRef[],
+  prefixes: AccountPrefixes,
+): BalanceLine[] {
+  const journalByAccount = new Map(journals.map((j) => [j.accountId, j]));
+  const sums = new Map<string, { line: Omit<BalanceLine, "amount">; values: string[] }>();
+  const add = (line: Omit<BalanceLine, "amount">, value: string, negate: boolean) => {
+    const key = `${line.odooCompanyId}:${line.kind}:${line.odooPartnerId}:${line.odooJournalId}`;
+    const amount = decimal(value);
+    const entry = sums.get(key) ?? { line, values: [] };
+    entry.values.push((negate ? neg(amount) : amount).toString());
+    sums.set(key, entry);
+  };
+  for (const line of lines) {
+    const { code, partner } = line;
+    const base = {
+      entity: line.entity,
+      odooCompanyId: line.odooCompanyId,
+      odooPartnerId: null,
+      odooJournalId: null,
+    };
+    if (line.accountType === "asset_cash") {
+      const journal = journalByAccount.get(line.accountId);
+      add(
+        {
+          ...base,
+          kind: "bank",
+          reference: journal?.name ?? line.accountLabel,
+          odooJournalId: journal?.id ?? null,
+        },
+        line.balance,
+        false,
+      );
+    } else if (code.startsWith(prefixes.receivable)) {
+      add(
+        {
+          ...base,
+          kind: "tenant",
+          reference: partner ? partner.name : "(sans tiers)",
+          odooPartnerId: partner ? partner.id : null,
+        },
+        line.balance,
+        false,
+      );
+    } else if (code.startsWith(prefixes.cca)) {
+      add(
+        {
+          ...base,
+          kind: "cca",
+          reference: partner ? partner.name : "(sans tiers)",
+          odooPartnerId: partner ? partner.id : null,
+        },
+        line.balance,
+        true,
+      );
+    } else if (code.startsWith(prefixes.deposit)) {
+      add({ ...base, kind: "deposit", reference: "dépôts de garantie" }, line.balance, true);
+    } else if (code.startsWith(prefixes.loan)) {
+      add({ ...base, kind: "loan", reference: "emprunts" }, line.balance, true);
+    } else if (code.startsWith(prefixes.asset) || code.startsWith(prefixes.depreciation)) {
+      add({ ...base, kind: "nbv", reference: "valeur nette comptable" }, line.balance, false);
+    }
+  }
+  return [...sums.values()].map(({ line, values }) => ({
+    ...line,
+    amount: toMoney(sum(values.map((v) => decimal(v)))),
+  }));
+}
+
+/**
+ * The restored copy, read from the tables: Odoo 19 keeps the code in `code_store`
+ * keyed by company id and translates account and journal names in jsonb.
+ */
+export function createOdooCopyLedger(
+  url: string,
+  prefixes: AccountPrefixes = DEFAULT_PREFIXES,
+): LedgerReader {
+  const label = (() => {
+    try {
+      const parsed = new URL(url);
+      return `Copie Odoo ${parsed.hostname}${parsed.port ? `:${parsed.port}` : ""}${parsed.pathname}`;
+    } catch {
+      return `Copie Odoo ${url}`;
+    }
+  })();
+  return {
+    label,
+    async read(asOf) {
+      return withCopy(url, async (sql) => {
+        const journals = await sql<{ id: number; name: string; account_id: number }[]>`
+          SELECT id, COALESCE(name->>'en_US', code) AS name, default_account_id AS account_id
+            FROM account_journal WHERE type = 'bank' AND default_account_id IS NOT NULL`;
+        const rows = await sql<
+          {
+            code: string | null;
+            account_type: string;
+            account_id: number;
+            account_label: string | null;
+            balance: string;
+            entity: string;
+            company_id: number;
+            partner_id: number | null;
+            partner_name: string | null;
+          }[]
+        >`
+          SELECT a.code_store->>(l.company_id::text) AS code, a.account_type, l.account_id,
+                 a.name->>'en_US' AS account_label, l.balance::text, c.name AS entity,
+                 l.company_id, l.partner_id, p.name AS partner_name
+            FROM account_move_line l
+            JOIN account_account a ON a.id = l.account_id
+            JOIN res_company c ON c.id = l.company_id
+            LEFT JOIN res_partner p ON p.id = l.partner_id
+           WHERE l.parent_state = 'posted' AND l.date <= ${asOf}::date
+           ORDER BY l.id`;
+        const lines = sumLedgerLines(
+          rows.map((row) => ({
+            code: row.code ?? "",
+            accountType: row.account_type,
+            accountId: row.account_id,
+            accountLabel: row.account_label ?? String(row.account_id),
+            balance: row.balance,
+            entity: row.entity,
+            odooCompanyId: row.company_id,
+            partner:
+              row.partner_id === null
+                ? null
+                : { id: row.partner_id, name: row.partner_name ?? String(row.partner_id) },
+          })),
+          journals.map((j) => ({ id: j.id, name: j.name, accountId: j.account_id })),
+          prefixes,
+        );
+        return { asOf, source: `${label} (account_move_line comptabilisées au ${asOf})`, lines };
+      });
     },
   };
 }

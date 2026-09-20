@@ -1,4 +1,4 @@
-export type SourceName = "odoo" | "spreadsheet" | "platform";
+export type SourceName = "odoo" | "odoo_copy" | "spreadsheet" | "platform";
 
 export type RecordKind =
   | "person"
@@ -10,7 +10,10 @@ export type RecordKind =
   | "loan"
   | "meter"
   | "asset"
-  | "booking";
+  | "booking"
+  | "deposit_movement"
+  | "cca_movement"
+  | "loan_movement";
 
 export type RejectionReason =
   | "missing_field"
@@ -25,7 +28,7 @@ export type RejectionReason =
   | "not_posted"
   | "unsupported";
 
-export type DeferralReason = "owned_by_backsync" | "use_in_app_import";
+export type DeferralReason = "owned_by_backsync" | "use_in_app_import" | "entered_in_app";
 
 export type Rejection = {
   source: SourceName;
@@ -38,9 +41,12 @@ export type Rejection = {
 
 type Base = { source: SourceName; ref: string; line?: number };
 
+export type PersonRole = "tenant" | "supplier" | "associate" | "lender";
+
 export type PersonRecord = Base & {
   kind: "person";
   displayName: string;
+  roles: PersonRole[];
   email: string | null;
   phone: string | null;
   odooPartnerId: number | null;
@@ -56,6 +62,7 @@ export type SupplierRecord = Base & {
 export type LeaseRecord = Base & {
   kind: "lease";
   entity: string;
+  odooCompanyId: number | null;
   reference: string;
   tenantName: string;
   unitCode: string | null;
@@ -66,6 +73,7 @@ export type LeaseRecord = Base & {
   charges: string;
   deposit: string | null;
   paymentDay: number | null;
+  inferred: boolean;
 };
 
 export type RentTermRecord = Base & {
@@ -80,8 +88,11 @@ export type RentTermRecord = Base & {
   total: string;
   residual: string;
   settled: boolean;
+  component: "rent" | "charges";
   odooMoveId: number;
   odooMoveName: string;
+  odooStatementLineId: number | null;
+  nettedRefs: string[];
 };
 
 export type ExpenseRecord = Base & {
@@ -112,6 +123,7 @@ export type BankLineRecord = Base & {
 export type LoanRecord = Base & {
   kind: "loan";
   entity: string;
+  odooCompanyId: number | null;
   reference: string;
   lender: string;
   principal: string;
@@ -159,6 +171,33 @@ export type BookingRecord = Base & {
   payoutNetAmount: string | null;
 };
 
+type Movement = Base & {
+  entity: string;
+  odooCompanyId: number | null;
+  partnerName: string;
+  odooPartnerId: number;
+  occurredOn: string;
+  amount: string;
+  odooMoveId: number;
+  odooMoveName: string;
+  odooStatementLineId: number | null;
+};
+
+export type DepositMovementRecord = Movement & {
+  kind: "deposit_movement";
+  direction: "received" | "returned";
+};
+
+export type CcaMovementRecord = Movement & {
+  kind: "cca_movement";
+  direction: "contribution" | "repayment";
+};
+
+export type LoanMovementRecord = Movement & {
+  kind: "loan_movement";
+  direction: "drawdown" | "repayment" | "interest";
+};
+
 export type SourceRecord =
   | PersonRecord
   | SupplierRecord
@@ -169,7 +208,10 @@ export type SourceRecord =
   | LoanRecord
   | MeterRecord
   | AssetRecord
-  | BookingRecord;
+  | BookingRecord
+  | DepositMovementRecord
+  | CcaMovementRecord
+  | LoanMovementRecord;
 
 export type SourceCoverage = { from: string | null; to: string | null };
 
@@ -255,6 +297,8 @@ export type Ambiguity = {
 
 export type Deferral = { kind: RecordKind; ref: string; reason: DeferralReason; detail: string };
 
+export type Proposal = { kind: RecordKind; ref: string; detail: string };
+
 export type EntityTotals = {
   entityId: string;
   entityName: string;
@@ -296,6 +340,7 @@ export type Plan = {
   matches: Match[];
   ambiguities: Ambiguity[];
   deferrals: Deferral[];
+  proposals: Proposal[];
   resolutions: Resolutions;
   perEntity: EntityTotals[];
   blockers: string[];

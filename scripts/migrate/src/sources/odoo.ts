@@ -192,6 +192,7 @@ export function createOdooSource(options: OdooSourceOptions): SourceReader {
           kind: "person",
           ref,
           displayName: partner.name,
+          roles: asSupplier ? ["supplier", "tenant"] : ["tenant"],
           email: partner.email ? partner.email : null,
           phone: null,
           odooPartnerId: partner.id,
@@ -258,8 +259,11 @@ export function createOdooSource(options: OdooSourceOptions): SourceReader {
         total: wire(move.amount_total),
         residual: wire(move.amount_residual),
         settled,
+        component: "rent",
         odooMoveId: move.id,
         odooMoveName: move.name || ref,
+        odooStatementLineId: null,
+        nettedRefs: [],
       };
       return { record };
     }

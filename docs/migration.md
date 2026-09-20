@@ -8,7 +8,8 @@ Every command runs from any directory. Node 24 through fnm, and the `.env` at th
 
 | Source | What | Format | Read by |
 |---|---|---|---|
-| Odoo | partners, customer invoices, supplier bills, bank statement lines, assets | nothing to export: the tool reads through the API with the bot user's key (`ODOO_*` in `.env`), on the **duplicate** database first (plan P2), never the live one before the cut-over date | `--odoo` |
+| Odoo (API) | partners, customer invoices, supplier bills, bank statement lines, assets | nothing to export: the tool reads through the API with the bot user's key (`ODOO_*` in `.env`), on the **duplicate** database first (plan P2), never the live one before the cut-over date | `--odoo` |
+| Odoo (restored backup) | the same facts read straight from the tables of a backup restored into a scratch PostgreSQL database — the path when no Odoo server can run on the backup (§2.5) | the owner downloads the Odoo Online backup and restores it with `psql` | `--odoo-copy <url>` |
 | Spreadsheets | tenants, leases, meters, loans | one CSV per table, first line = column names, `;` or `,` separator, dates `JJ/MM/AAAA`, amounts with a comma (`1 250,00`) | `--tenants`, `--leases`, `--meters`, `--loans` |
 | Short-term platform | reservations | the CSV the platform exports, unchanged | `--bookings` |
 | Accountant | balances at the cut-over date | one CSV: `Société;Nature;Référence;Solde` | `balances.ts --ledger soldes.csv` |
@@ -88,6 +89,42 @@ Against Odoo, the figures come from posted `account.move.line` rows up to the da
 
 Exit `1` when the ledger extraction is empty or all zero; exit `2` when the ledger or the database could not be read.
 
+### 2.5 Reading a restored Odoo Online backup (`--odoo-copy`)
+
+The owner's live base is Odoo 19 **Enterprise**. Its backup restores fine into PostgreSQL, but no Odoo server can boot on it here: the Community image in `docker-compose.dev.yml` lacks the Enterprise modules (`account_asset`, `account_loan`, the Online bank feed), so the API source cannot be pointed at it. The copy source reads the tables directly instead, in one read-only transaction (`BEGIN … READ ONLY`), and never writes to the copy.
+
+**Restoring a backup into a scratch database.** From the Odoo Online database manager, download a backup with the format *pg_dump (without filestore)* — a `dump.sql` inside the zip. Then, one line at a time (each fails on its own without closing the terminal):
+
+```bash
+docker exec -i lfsci-dev-db psql -U lfsci -d postgres -c 'CREATE DATABASE lfsci_odoo_online_copy'
+docker exec -i lfsci-dev-db psql -U lfsci -d lfsci_odoo_online_copy < dump.sql
+```
+
+The dev database is a superuser account, so the extension and ownership statements of the dump pass. The copy is then `postgres://lfsci:lfsci@127.0.0.1:5434/lfsci_odoo_online_copy`; nothing in `.env` points at it, the URL is given on the command line every time. Dropping the copy afterwards: `docker exec -i lfsci-dev-db psql -U lfsci -d postgres -c 'DROP DATABASE lfsci_odoo_online_copy'`. Never restore over `lfsci` or `lfsci_test`.
+
+**Dry run and balances on the copy:**
+
+```bash
+eval "$(fnm env)" && fnm use 24 && npx tsx --env-file-if-exists=.env scripts/migrate/dry-run.ts --organization <uuid> --odoo-copy postgres://lfsci:lfsci@127.0.0.1:5434/lfsci_odoo_online_copy --out tmp/dry-run.json
+eval "$(fnm env)" && fnm use 24 && npx tsx --env-file-if-exists=.env scripts/migrate/balances.ts --organization <uuid> --as-of 2026-12-31 --odoo-copy postgres://lfsci:lfsci@127.0.0.1:5434/lfsci_odoo_online_copy --out tmp/balances.json
+```
+
+`--odoo` and `--odoo-copy` are exclusive; the spreadsheets and the platform export combine with either. Reports carry the owner's real names and amounts: write them under `tmp/` (gitignored), never under `scripts/migrate/out/`. A copy that cannot be reached exits `2` and names it, like any other source.
+
+**What the copy looks like, and what the reader makes of it** (measured on the restored backup, 2026-09-20):
+
+- Odoo 19 stores the account code in `account_account.code_store` as jsonb keyed by company id, and account and journal names as translated jsonb; the reader takes `code_store->>'<company id>'` and `name->>'en_US'`. Exactly one `res_company` is expected; the fiscal-year and hard lock dates are read and printed in the source notes.
+- The SCI raises **no invoice**: every fact is a bank statement line reconciled against a revenue or expense account. Rent is recognised on receipt on `706003`, charge provisions on `706004`. A credit there with partner P dated D is a rent received from tenant P; the term's period is **the calendar month of the receipt**, its due date the receipt date, it is `settled` with residual `0.00`, its source reference is `account.move.line:<id>` and it carries the bank statement line id. A month with two receipts from one tenant is **two terms**. A debit on the same account (refund, correction) is netted against the credits of the same partner, month and account in date order — the term keeps the netted line ids in `nettedRefs` — and a debit larger than the month's receipts is rejected `unsupported` for the owner to enter by hand. A receipt with no partner is rejected `missing_field`.
+- Persons and suppliers come from `res_partner`, with **roles inferred from the accounts a partner appears on**: `tenant` (706003/706004), `associate` (455100), `lender` (164000/661600), `supplier` (any other expense account, `60`–`63`). A partner can hold several roles; one with none (contacts, the company's own partner) is skipped and counted in the notes. Archived partners with movements are kept: a tenant who left is still a tenant of the history.
+- Expenses are the debit lines on expense accounts with a partner (`paid`, residual `0.00`); a credit there (supplier refund) is rejected `unsupported`, a partner-less one `missing_field`. Depreciation charges (`68xxxx`) are not expenses and are skipped; loan interest (`661600`) becomes a loan movement.
+- Deposits (`165500`), partners' current accounts (`455100`) and the loan (`164000` + `661600`) come out as `deposit_movement`, `cca_movement` and `loan_movement` records with a direction (`received`/`returned`, `contribution`/`repayment`, `drawdown`/`repayment`/`interest`). They are read and inventoried, then **deferred** (`entered_in_app`): the owner records them in the application and the balance report reconciles them. The deposit's tenant is the partner on the line, nothing else identifies it. The loan itself is derived from the `164000` credit (principal, release date, lender, outstanding after the last repayment); duration and rate are unknown and stay empty.
+- Assets come from `account_asset` (states `open`, `close`, `paused`; models and cancelled rows excluded), bank lines from `account_bank_statement_line` joined to their posted move for the date. Suspense (`512002`) lines are counted in the notes with their balance: a non-zero balance is unreconciled residue to letter in Odoo before the cut-over.
+- **A tenant with rents but no lease** anywhere (application or spreadsheet) gets a **proposed lease** in the plan (`BAIL-ODOO-<partner id>`, kind `other`, start = first month received, rent and charges = the monthly total seen most often, deposit = deposits received minus returned, no end date, no unit, no payment day). The plan lists it under "Baux proposés" and the apply creates it; the owner completes it afterwards. A tenant whose name is ambiguous is reported, never resolved by picking one.
+
+What the copy cannot tell: the contractual rent (only what was received), the lease start and end (only the first and last receipts), the period a receipt pays for (assumed to be its month — a late payment lands in the wrong month), which lease a deposit belongs to when a tenant has several, the loan's rate and duration, and anything about units or buildings.
+
+**The balance report** reads the copy's `account_move_line` sums per account family (`411`, `165`, `164`, `455`, cash accounts by bank journal, `21` net of `28`), exactly as the API ledger does. No `411` receivable is used by this SCI, so the ledger side has no tenant lines: a tenant balance in the application that is not `0.00` is a difference to explain.
+
 ## 3. What a clean dry run looks like
 
 Run on the fixtures against the fake ledger, abridged. The terminal is in French because the owner reads it.
@@ -150,7 +187,8 @@ A dry run is clean when it exits `0`, the rejections are all ones the owner acce
 - `odoo-source.test.ts` — the reader goes through the connector only (`search_read`), classifies partners by rank, maps invoices to terms and bills to expenses, rejects a draft and a partner-less bill, notes an absent `account.asset` the way the local Odoo 18 answers it, and turns an unreachable server into `SourceUnreachable`.
 - `plan.test.ts` — the Odoo invoice lands on the spreadsheet lease through the tenant; the unpaid one is deferred; unknown entity, person, lease and building are rejected with the row named; an existing person spelled differently is proposed, not applied; two existing leases for one tenant block the plan as an ambiguity; a source with zero records blocks it too; a dead source or a dead database fails the run and says which.
 - `balances.test.ts` — the accountant's file and the Odoo move lines both produce the same report shape; liabilities are read as what is owed; a cash line posted from a miscellaneous journal still counts on the bank account; an empty ledger is a blocker; an absent file is unreachable.
-- `exit-code.test.ts` — the real entry point, spawned with an unreachable Odoo and an unreachable database, exits `2`, names both, and prints no inventory.
+- `odoo-copy.test.ts` — on synthetic lines: the 706003 credit-minus-debit netting per partner and month (a debit spread over two receipts, one it cannot absorb), two receipts in a month giving two terms with their statement line ids, role inference from the accounts (several roles at once, none for a depreciation or bank line), the movement kinds and the derived loan, and an unreachable copy as `SourceUnreachable`. With `TEST_DATABASE_URL`, it creates `lfsci_test_odoo_copy` on the dev server, seeds a handful of Odoo 19-shaped tables (jsonb `code_store` and names, a draft move, an asset model), runs the copy reader, the plan (proposed lease with deposit, every term on it) and the copy ledger at two dates, then drops the database.
+- `exit-code.test.ts` — the real entry point, spawned with an unreachable Odoo and an unreachable database, exits `2`, names both, and prints no inventory; the same with an unreachable `--odoo-copy`; `--odoo-copy` without a URL is a usage error.
 - `historical-flag.test.ts` (database) — the apply writes the settled history through `withTenant`, every row carries its `migration_import` event; then `arrearsDetect` runs on a date where every imported term is overdue and writes no deadline, opens no exception and sends nothing. The second test writes the deferred unpaid term by hand and shows the deadline appear, which is why it is deferred. The third applies the same plan twice and counts nothing written the second time.
 
 ## 5. Known limits before the owner's data
@@ -159,7 +197,8 @@ A dry run is clean when it exits `0`, the rejections are all ones the owner acce
 - **Assets.** `account.asset` does not exist on Odoo Community, so the field names the reader asks for (`original_value`, `book_value`, `acquisition_date`) are unverified until the Online duplicate answers; the reader reports the model as unreadable instead of failing, and the net book value comes from the accountant's file in the meantime.
 - **Loans are not in Odoo as objects**, only as `164` balances: the loan rows come from the owner's spreadsheet, the balance report compares the entity total.
 - **The received date of a settled term is assumed** to be its due date, since `account.move` does not carry the payment date; the event payload says so (`receivedOnAssumed`).
-- **Odoo partners without a customer or supplier rank are skipped** (contacts, the company, system users): a tenant never invoiced through Odoo comes from the tenants spreadsheet.
+- **Odoo partners without a customer or supplier rank are skipped** by the API source (contacts, the company, system users): a tenant never invoiced through Odoo comes from the tenants spreadsheet. The copy source infers roles from the accounts instead (§2.5).
+- **On the owner's copy the dry run needs the legal entity first.** The company must exist in the application with `odoo_company_id` set to the copy's `res_company.id`; otherwise every record is rejected `unknown_entity` and the plan is blocked ("aucune société de cette source n'existe dans l'application"), which is exit `1`, never a silent `0`.
 
 ## 6. Cut-over (MIG-03)
 

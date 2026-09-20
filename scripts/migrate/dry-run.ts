@@ -1,7 +1,7 @@
 /**
  * MIG-01 inventory: reads every source, writes nothing, reports counts, rejects,
  * proposed matches and totals per legal entity.
- * Run: npx tsx --env-file-if-exists=.env scripts/migrate/dry-run.ts --organization <uuid> [--odoo] [--tenants f.csv] [--leases f.csv] [--meters f.csv] [--loans f.csv] [--bookings f.csv] [--out file.json]
+ * Run: npx tsx --env-file-if-exists=.env scripts/migrate/dry-run.ts --organization <uuid> [--odoo | --odoo-copy <postgres url>] [--tenants f.csv] [--leases f.csv] [--meters f.csv] [--loans f.csv] [--bookings f.csv] [--out file.json]
  */
 import { join } from "node:path";
 import {
@@ -23,6 +23,7 @@ import type { SourceReader } from "./src/model";
 import { renderPlan, writeJson } from "./src/report";
 import { dbFromEnv, odooClientFromEnv } from "./src/runtime";
 import { createOdooSource } from "./src/sources/odoo";
+import { createOdooCopySource } from "./src/sources/odoo-copy";
 import {
   createPlatformSource,
   createSpreadsheetSource,
@@ -33,15 +34,22 @@ const SPREADSHEETS: MappingKind[] = ["tenants", "leases", "meters", "loans"];
 
 export function readersFromArgs(
   argv: string[],
-  factories: { odoo: () => SourceReader } = {
+  factories: { odoo: () => SourceReader; odooCopy: (url: string) => SourceReader } = {
     odoo: () => createOdooSource({ client: odooClientFromEnv() }),
+    odooCopy: (url) => createOdooCopySource({ url }),
   },
 ): { readers: SourceReader[]; organizationId: string; out: string } | { usage: string } {
   const args = parseArgs(argv);
   const organizationId = flag(args, "organization");
   if (!organizationId) return { usage: "--organization <uuid> est obligatoire" };
   const readers: SourceReader[] = [];
+  const copyUrl = flag(args, "odoo-copy");
+  if (has(args, "odoo-copy") && !copyUrl) {
+    return { usage: "--odoo-copy attend l’URL PostgreSQL de la copie restaurée" };
+  }
+  if (has(args, "odoo") && copyUrl) return { usage: "--odoo et --odoo-copy sont exclusifs" };
   if (has(args, "odoo")) readers.push(factories.odoo());
+  if (copyUrl) readers.push(factories.odooCopy(copyUrl));
   const files: SpreadsheetFile[] = [];
   for (const kind of SPREADSHEETS) {
     const path = flag(args, kind);
@@ -54,7 +62,8 @@ export function readersFromArgs(
   if (bookings) readers.push(createPlatformSource(bookings, flag(args, "bookings-mapping")));
   if (readers.length === 0) {
     return {
-      usage: "aucune source : --odoo, --tenants, --leases, --meters, --loans ou --bookings",
+      usage:
+        "aucune source : --odoo, --odoo-copy <url>, --tenants, --leases, --meters, --loans ou --bookings",
     };
   }
   return { readers, organizationId, out: flag(args, "out") ?? join(outDir, "dry-run.json") };

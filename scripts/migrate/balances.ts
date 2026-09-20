@@ -1,12 +1,13 @@
 /**
  * MIG-02 opening balances: what the application computes at one date against the
  * ledger, difference by difference, never corrected.
- * Run: npx tsx --env-file-if-exists=.env scripts/migrate/balances.ts --organization <uuid> --as-of 2026-12-31 [--ledger odoo | --ledger soldes.csv] [--out file.json]
+ * Run: npx tsx --env-file-if-exists=.env scripts/migrate/balances.ts --organization <uuid> --as-of 2026-12-31 [--ledger odoo | --ledger soldes.csv | --odoo-copy <postgres url>] [--out file.json]
  */
 import { join } from "node:path";
 import {
   compareBalances,
   createCsvLedger,
+  createOdooCopyLedger,
   createOdooLedger,
   DEFAULT_PREFIXES,
   type LedgerReader,
@@ -19,6 +20,7 @@ import {
   EXIT_UNREACHABLE,
   EXIT_USAGE,
   flag,
+  has,
   type Io,
   outDir,
   parseArgs,
@@ -34,10 +36,15 @@ export async function main(argv: string[], io: Io = stdio): Promise<number> {
   const args = parseArgs(argv);
   const organizationId = flag(args, "organization");
   const asOf = flag(args, "as-of");
+  const copyUrl = flag(args, "odoo-copy");
+  const usage =
+    "Usage : --organization <uuid> --as-of AAAA-MM-JJ [--ledger odoo | --ledger soldes.csv | --odoo-copy <url>]";
   if (!organizationId || !asOf || !ISO_DATE.test(asOf)) {
-    io.err(
-      "Usage : --organization <uuid> --as-of AAAA-MM-JJ [--ledger odoo | --ledger soldes.csv]",
-    );
+    io.err(usage);
+    return EXIT_USAGE;
+  }
+  if ((has(args, "odoo-copy") && !copyUrl) || (copyUrl && has(args, "ledger"))) {
+    io.err(usage);
     return EXIT_USAGE;
   }
   const ledgerArg = flag(args, "ledger") ?? "odoo";
@@ -46,8 +53,9 @@ export async function main(argv: string[], io: Io = stdio): Promise<number> {
     const value = flag(args, `account-${key}`);
     if (value) prefixes[key] = value;
   }
-  const ledger: LedgerReader =
-    ledgerArg === "odoo"
+  const ledger: LedgerReader = copyUrl
+    ? createOdooCopyLedger(copyUrl, prefixes)
+    : ledgerArg === "odoo"
       ? createOdooLedger(odooClientFromEnv(), prefixes)
       : createCsvLedger(ledgerArg);
   const out = flag(args, "out") ?? join(outDir, `balances-${asOf}.json`);

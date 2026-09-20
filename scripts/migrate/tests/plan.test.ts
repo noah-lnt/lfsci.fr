@@ -29,7 +29,7 @@ async function reads() {
 }
 
 describe("plan", () => {
-  it("links Odoo history to the leases through the tenant, defers the unpaid term and rejects what it cannot place", async () => {
+  it("links Odoo history to the leases through the tenant, proposes a lease for a tenant without one and rejects what it cannot place", async () => {
     const plan = buildPlan({
       organizationId: "org",
       reads: await reads(),
@@ -47,8 +47,28 @@ describe("plan", () => {
     ).toEqual([
       ["account.move:60", "not_posted"],
       ["account.move:71", "missing_field"],
-      ["account.move:61", "unknown_lease"],
     ]);
+    expect(plan.proposals).toEqual([
+      expect.objectContaining({
+        kind: "lease",
+        ref: "res.partner:15",
+        detail: expect.stringContaining("BAIL-ODOO-15 pour Jean Dupont : 1 encaissement(s)"),
+      }),
+    ]);
+    expect(plan.resolutions.rentTermLeases["account.move:61"]).toEqual({
+      create: "lease:BAIL-ODOO-15",
+    });
+    expect(plan.records).toContainEqual(
+      expect.objectContaining({
+        kind: "lease",
+        reference: "BAIL-ODOO-15",
+        inferred: true,
+        startsOn: "2026-08-01",
+        rent: "600.00",
+        charges: "0.00",
+        deposit: null,
+      }),
+    );
     expect(plan.rejections.filter((r) => r.reason === "unknown_entity")).toEqual([
       expect.objectContaining({ ref: "BAIL-2025-004" }),
     ]);
@@ -72,8 +92,8 @@ describe("plan", () => {
     expect(plan.perEntity).toEqual([
       expect.objectContaining({
         entityName: "SCI Exemple",
-        counts: { rent_term: 2, expense: 1, lease: 2, meter: 2, loan: 2 },
-        totals: { rent_term: "1560.00", expense: "312.50", lease: "1250.00", loan: "275000.00" },
+        counts: { rent_term: 3, expense: 1, lease: 3, meter: 2, loan: 2 },
+        totals: { rent_term: "2160.00", expense: "312.50", lease: "1850.00", loan: "275000.00" },
       }),
     ]);
     expect(plan.blockers).toEqual([]);
@@ -192,5 +212,38 @@ describe("dry run", () => {
       },
     });
     expect(result).toMatchObject({ ok: false, failures: [{ source: "database" }] });
+  });
+});
+
+describe("inferred lease", () => {
+  it("takes the usual monthly total as the rent, so a month with two receipts does not set it", async () => {
+    const [odoo] = await reads();
+    const term = odoo?.records.find((r) => r.kind === "rent_term" && r.odooPartnerId === 15);
+    if (!odoo || term?.kind !== "rent_term") throw new Error("fixture changed");
+    const months = ["2026-05", "2026-06", "2026-07", "2026-07", "2026-08"];
+    const terms = months.map((month, index) => ({
+      ...term,
+      ref: `account.move:${900 + index}`,
+      periodStart: `${month}-01`,
+      periodEnd: `${month}-28`,
+      dueOn: `${month}-0${index + 1}`,
+      total: "700.00",
+      component: "rent" as const,
+    }));
+    const plan = buildPlan({
+      organizationId: "org",
+      reads: [{ ...odoo, records: [...odoo.records, ...terms] }],
+      existing: existingRows(),
+    });
+    expect(plan.records.filter((r) => r.kind === "lease" && r.ref === "res.partner:15")).toEqual([
+      expect.objectContaining({
+        reference: "BAIL-ODOO-15",
+        rent: "700.00",
+        startsOn: "2026-05-01",
+      }),
+    ]);
+    expect(
+      plan.rejections.filter((r) => r.kind === "rent_term" && r.reason === "unknown_lease"),
+    ).toEqual([]);
   });
 });

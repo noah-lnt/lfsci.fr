@@ -23,6 +23,9 @@ const KIND_LABELS: Record<RecordKind, string> = {
   meter: "compteurs",
   asset: "immobilisations",
   booking: "réservations",
+  deposit_movement: "mouvements de dépôt",
+  cca_movement: "mouvements de compte courant",
+  loan_movement: "mouvements d’emprunt",
 };
 
 export function renderPlan(plan: Plan): string {
@@ -123,6 +126,18 @@ export function renderPlan(plan: Plan): string {
           a.evidence,
           a.candidates.map((c) => c.label).join(" / ") || "plusieurs personnes portent ce nom",
         ]),
+      ),
+    );
+  }
+  out.push("");
+
+  out.push("Baux proposés (déduits des loyers encaissés, créés par l’apply)");
+  if (plan.proposals.length === 0) out.push("  aucun");
+  else {
+    out.push(
+      table(
+        ["nature", "référence", "détail"],
+        plan.proposals.map((p) => [p.kind, p.ref, p.detail]),
       ),
     );
   }

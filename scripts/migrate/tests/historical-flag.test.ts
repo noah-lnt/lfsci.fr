@@ -72,14 +72,14 @@ run("historical import", () => {
     expect(report.written).toEqual({
       person: 3,
       supplier: 1,
-      lease: 2,
-      rent_term: 2,
+      lease: 3,
+      rent_term: 3,
       expense: 1,
       loan: 2,
       meter: 2,
     });
     expect(report.entities).toEqual([
-      { entityId: ENTITY_ID, entityName: "SCI Exemple", written: 9 },
+      { entityId: ENTITY_ID, entityName: "SCI Exemple", written: 11 },
     ]);
 
     const terms = await exec(sql`
@@ -88,7 +88,7 @@ run("historical import", () => {
         FROM rent_term t
         JOIN rent_term_version v ON v.id = t.current_version_id
         JOIN lease l ON l.id = t.lease_id
-       ORDER BY t.due_on`);
+       ORDER BY t.due_on, v.odoo_move_name`);
     expect(terms).toEqual([
       {
         status: "settled",
@@ -104,6 +104,13 @@ run("historical import", () => {
         odoo_move_name: "INV/2026/00024",
         reference: "BAIL-2024-001",
       },
+      {
+        status: "settled",
+        due_on: "2026-08-05",
+        total: "600.00",
+        odoo_move_name: "INV/2026/00025",
+        reference: "BAIL-ODOO-15",
+      },
     ]);
     expect(
       await exec(
@@ -113,12 +120,13 @@ run("historical import", () => {
     ).toEqual([
       { amount: "780.00", confirmed_by_odoo: true, odoo_reconcile_ref: "INV/2026/00023" },
       { amount: "380.00", confirmed_by_odoo: true, odoo_reconcile_ref: "INV/2026/00024" },
+      { amount: "600.00", confirmed_by_odoo: true, odoo_reconcile_ref: "INV/2026/00025" },
     ]);
     const events = await exec(sql`
       SELECT count(*)::int AS n, bool_and(origin = 'import') AS all_import,
              bool_and(is_migration_import) AS all_flagged, count(DISTINCT payload->>'batchId')::int AS batches
         FROM event WHERE type = ${IMPORT_EVENT_TYPE}`);
-    expect(events).toEqual([{ n: 13, all_import: true, all_flagged: true, batches: 1 }]);
+    expect(events).toEqual([{ n: 15, all_import: true, all_flagged: true, batches: 1 }]);
     expect(await exec(sql`SELECT origin FROM meter_reading`)).toEqual([{ origin: "import" }]);
     expect(await exec(sql`SELECT source FROM loan_schedule_version`)).toEqual([
       { source: "import" },
@@ -145,16 +153,19 @@ run("historical import", () => {
     expect(plan.deferrals.filter((d) => d.kind === "rent_term")).toEqual([]);
 
     const terms = await exec(sql`
-      SELECT status, is_migration_import, due_on::text AS due_on FROM rent_term ORDER BY due_on`);
+      SELECT status, is_migration_import, due_on::text AS due_on FROM rent_term ORDER BY due_on, status`);
     expect(terms).toEqual([
       { status: "settled", is_migration_import: true, due_on: "2026-07-05" },
       { status: "partially_settled", is_migration_import: true, due_on: "2026-08-05" },
+      { status: "settled", is_migration_import: true, due_on: "2026-08-05" },
     ]);
     // 780 invoiced, 400 still due in Odoo: the 380 already received is an allocation, the rest a debt.
     expect(
       await exec(sql`
         SELECT a.amount::text AS amount FROM payment_allocation a
-          JOIN rent_term t ON t.id = a.rent_term_id WHERE t.due_on = '2026-08-05'`),
+          JOIN rent_term t ON t.id = a.rent_term_id
+          JOIN lease l ON l.id = t.lease_id
+         WHERE t.due_on = '2026-08-05' AND l.reference = 'BAIL-2024-001'`),
     ).toEqual([{ amount: "380.00" }]);
 
     const arrears = await detectForOrganization(deps(), ORG_ID, AS_OF);
@@ -183,8 +194,8 @@ run("historical import", () => {
     await applyPlan(appDb(), plan, { today: AS_OF });
     const again = await applyPlan(appDb(), plan, { today: AS_OF });
     expect(again.written).toEqual({});
-    expect(again.alreadyImported).toBe(13);
-    expect(await exec(sql`SELECT count(*)::int AS n FROM rent_term`)).toEqual([{ n: 2 }]);
+    expect(again.alreadyImported).toBe(15);
+    expect(await exec(sql`SELECT count(*)::int AS n FROM rent_term`)).toEqual([{ n: 3 }]);
     expect(await exec(sql`SELECT count(*)::int AS n FROM person`)).toEqual([{ n: 3 }]);
   });
 });

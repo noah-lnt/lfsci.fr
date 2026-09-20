@@ -209,6 +209,7 @@ function mapRow(
         ref: cells.text("ref") ?? ref,
         line,
         displayName,
+        roles: ["tenant"],
         email: cells.text("email"),
         phone: cells.text("phone"),
         odooPartnerId: cells.integer("odooPartnerId"),
@@ -236,6 +237,7 @@ function mapRow(
         ref: cells.need("reference"),
         line,
         entity: cells.need("entity"),
+        odooCompanyId: null,
         reference: cells.need("reference"),
         tenantName: cells.need("tenantName"),
         unitCode: cells.text("unitCode"),
@@ -246,6 +248,7 @@ function mapRow(
         charges: cells.money("charges") ?? "0.00",
         deposit: cells.money("deposit"),
         paymentDay,
+        inferred: false,
       };
       return record;
     }
@@ -296,6 +299,7 @@ function mapRow(
         ref: cells.need("reference"),
         line,
         entity: cells.need("entity"),
+        odooCompanyId: null,
         reference: cells.need("reference"),
         lender: cells.need("lender"),
         principal: needMoney(cells, "principal"),

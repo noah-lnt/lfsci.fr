@@ -9,6 +9,7 @@ function person(overrides: Partial<PersonRecord>): PersonRecord {
     kind: "person",
     ref: "T-1",
     displayName: "Camille Martin",
+    roles: ["tenant"],
     email: null,
     phone: null,
     odooPartnerId: null,

@@ -55,6 +55,29 @@ describe("dry-run entry point", () => {
     expect(result.stdout).not.toContain("Import à blanc —");
   }, 30_000);
 
+  it("exits 2 when the restored copy cannot be reached, and never reports an empty inventory", async () => {
+    const result = await runScript(
+      [
+        "--organization",
+        "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa",
+        "--odoo-copy",
+        "postgres://x:x@127.0.0.1:9/lfsci_odoo_online_copy",
+      ],
+      { DATABASE_URL: "postgres://x:x@127.0.0.1:9/x" },
+    );
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain("odoo_copy : Copie Odoo");
+    expect(result.stdout).not.toContain("Import à blanc —");
+  }, 30_000);
+
+  it("refuses --odoo-copy without a URL", async () => {
+    const result = await runScript(["--organization", "x", "--odoo-copy"], {
+      DATABASE_URL: "postgres://x:x@127.0.0.1:9/x",
+    });
+    expect(result.code).toBe(3);
+    expect(result.stderr).toContain("--odoo-copy");
+  }, 30_000);
+
   it("refuses to run without an organization", async () => {
     const result = await runScript(["--odoo"], { DATABASE_URL: "postgres://x:x@127.0.0.1:9/x" });
     expect(result.code).toBe(3);

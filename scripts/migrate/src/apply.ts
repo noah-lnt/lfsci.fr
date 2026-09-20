@@ -302,7 +302,9 @@ async function writeEntityRows(
       effectiveOn: record.startsOn,
       rentExclCharges: record.rent,
       chargeAmount: record.charges,
-      summary: "Version reprise du tableau du propriétaire",
+      summary: record.inferred
+        ? "Version déduite des loyers encaissés dans Odoo"
+        : "Version reprise du tableau du propriétaire",
     });
     await tx.insert(tables.leaseParty).values({
       organizationId,
@@ -346,7 +348,7 @@ async function writeEntityRows(
       .values({
         organizationId,
         leaseId,
-        kind: "rent",
+        kind: record.component === "rent" ? "rent" : "charge_provision",
         periodStart: record.periodStart,
         periodEnd: record.periodEnd,
         dueOn: record.dueOn,
@@ -363,8 +365,8 @@ async function writeEntityRows(
         organizationId,
         rentTermId: term.id,
         sequence: 1,
-        rentAmount: record.total,
-        chargeAmount: "0.00",
+        rentAmount: record.component === "rent" ? record.total : "0.00",
+        chargeAmount: record.component === "charges" ? record.total : "0.00",
         accessoryAmount: "0.00",
         totalAmount: record.total,
         reason: "initial",
@@ -408,7 +410,9 @@ async function writeEntityRows(
       });
     }
     await trace(tx, organizationId, batchId, "rent_term", term.id, record, record.dueOn, {
-      receivedOnAssumed: true,
+      receivedOnAssumed: record.odooStatementLineId === null,
+      odooStatementLineId: record.odooStatementLineId,
+      nettedRefs: record.nettedRefs,
       paymentId,
       residual: record.residual,
     });
