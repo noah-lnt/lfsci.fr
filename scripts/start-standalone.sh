@@ -7,7 +7,7 @@ cd "$(git rev-parse --show-toplevel)"
 standalone="apps/web/.next/standalone"
 rm -rf "$standalone/apps/web/.next/static" "$standalone/apps/web/public"
 cp -r apps/web/.next/static "$standalone/apps/web/.next/static"
-cp -r apps/web/public "$standalone/apps/web/public"
+[ -d apps/web/public ] && cp -r apps/web/public "$standalone/apps/web/public"
 
 # The runner sets HOSTNAME to the machine name, which is not what the tests dial.
 export NODE_ENV=production PORT="${PORT:-3000}" HOSTNAME="${WEB_HOST:-127.0.0.1}"
