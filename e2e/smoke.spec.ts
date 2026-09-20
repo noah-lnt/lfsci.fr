@@ -1,21 +1,10 @@
-import AxeBuilder from "@axe-core/playwright";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { assertAccessible } from "./helpers/axe";
 
-const SERIOUS = new Set(["serious", "critical"]);
+const _SERIOUS = new Set(["serious", "critical"]);
 
 // The page-fade-in animation starts at opacity 0; axe must not sample mid-fade.
 test.use({ reducedMotion: "reduce" });
-
-async function assertAccessible(page: Page, label: string): Promise<void> {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  const blocking = results.violations.filter((v) => SERIOUS.has(v.impact ?? ""));
-  expect(
-    blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
-    `axe on ${label}`,
-  ).toEqual([]);
-}
 
 function unique(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;

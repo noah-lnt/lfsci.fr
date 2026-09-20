@@ -50,7 +50,7 @@ test("the situation strip renders absent figures as a dash, never as zero", asyn
   await expect(strip).toContainText("—");
 });
 
-test("the assistant says it is unavailable instead of failing when no model is configured", async ({
+test("the assistant says it is unavailable instead of failing when no model answers", async ({
   page,
 }) => {
   await signUpOwner(page);
@@ -62,5 +62,6 @@ test("the assistant says it is unavailable instead of failing when no model is c
   await panel.getByLabel("Assistant").fill("Que dois-je faire aujourd’hui ?");
   await panel.getByRole("button", { name: "Envoyer" }).click();
 
-  await expect(panel.getByRole("alert")).toContainText("L’assistant n’est pas configuré");
+  // No key: "n’est pas configuré"; default Ollama with no instance reachable: "indisponible".
+  await expect(panel.getByRole("alert")).toContainText(/n’est pas configuré|indisponible/);
 });

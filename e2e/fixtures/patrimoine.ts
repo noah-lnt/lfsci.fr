@@ -1,26 +1,14 @@
-import AxeBuilder from "@axe-core/playwright";
-import { expect, type Page } from "@playwright/test";
+export { assertAccessible } from "../helpers/axe";
 
-const SERIOUS = new Set(["serious", "critical"]);
+import type { Page } from "@playwright/test";
+
+const _SERIOUS = new Set(["serious", "critical"]);
 
 export function unique(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 }
 
 /** Zero serious or critical axe violation, the bar set in the tech pack §9. */
-export async function assertAccessible(page: Page, label: string): Promise<void> {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  const blocking = results.violations.filter((violation) => SERIOUS.has(violation.impact ?? ""));
-  expect(
-    blocking.map(
-      (violation) =>
-        `${violation.id}: ${violation.nodes.map((node) => node.target.join(" ")).join(", ")}`,
-    ),
-    `axe on ${label}`,
-  ).toEqual([]);
-}
 
 /**
  * The `next dev` tools badge is a floating host element that covers the bottom

@@ -1,5 +1,5 @@
-import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
+import { assertAccessible } from "./helpers/axe";
 import {
   closeFixtures,
   commandsOfType,
@@ -8,7 +8,7 @@ import {
   seedProperty,
 } from "./helpers/locations-fixtures";
 
-const SERIOUS = new Set(["serious", "critical"]);
+const _SERIOUS = new Set(["serious", "critical"]);
 
 test.use({ reducedMotion: "reduce" });
 test.describe.configure({ mode: "serial" });
@@ -17,17 +17,6 @@ test.setTimeout(180_000);
 test.afterAll(async () => {
   await closeFixtures();
 });
-
-async function assertAccessible(page: Page, label: string): Promise<void> {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  const blocking = results.violations.filter((violation) => SERIOUS.has(violation.impact ?? ""));
-  expect(
-    blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
-    `axe on ${label}`,
-  ).toEqual([]);
-}
 
 async function choose(page: Page, triggerId: string, option: string): Promise<void> {
   await page.locator(`#${triggerId}`).click();
@@ -161,8 +150,14 @@ test("the tenant list shows the tenant created with the lease", async ({ page })
 
   await page.goto("/locations/locataires");
   await expect(page.getByRole("heading", { name: "Locataires", level: 1 })).toBeVisible();
+  // A slow runner can reach the form before React hydrates it; wait for the page to settle.
+  await page.waitForLoadState("networkidle");
   await page.getByLabel("Nom affiché").fill("Dominique Leroy");
-  await page.getByRole("button", { name: "Créer le locataire" }).click();
+  const [created] = await Promise.all([
+    page.waitForResponse((response) => response.url().includes("/persons/create")),
+    page.getByRole("button", { name: "Créer le locataire" }).click(),
+  ]);
+  expect(created.ok()).toBe(true);
   await expect(page.getByRole("link", { name: "Dominique Leroy" })).toBeVisible({
     timeout: 20_000,
   });

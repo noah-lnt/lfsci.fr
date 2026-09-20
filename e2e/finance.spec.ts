@@ -1,5 +1,5 @@
-import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
+import { assertAccessible } from "./helpers/axe";
 import {
   allocationAmountsOf,
   closeFixtures,
@@ -8,24 +8,13 @@ import {
   seedPatrimoine,
 } from "./helpers/finance-fixtures";
 
-const SERIOUS = new Set(["serious", "critical"]);
+const _SERIOUS = new Set(["serious", "critical"]);
 
 test.use({ reducedMotion: "reduce" });
 
 test.afterAll(async () => {
   await closeFixtures();
 });
-
-async function assertAccessible(page: Page, label: string): Promise<void> {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  const blocking = results.violations.filter((violation) => SERIOUS.has(violation.impact ?? ""));
-  expect(
-    blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
-    `axe on ${label}`,
-  ).toEqual([]);
-}
 
 async function signUp(page: Page): Promise<string> {
   const slug = `fin-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;

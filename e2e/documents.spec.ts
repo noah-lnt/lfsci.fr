@@ -27,13 +27,15 @@ test("a photo captured from the lot is stored, listed and downloadable", async (
   await expect(row).toHaveCount(1, { timeout: 60_000 });
   await expect(row).toContainText("À qualifier");
 
-  const [download] = await Promise.all([
-    page.waitForEvent("download"),
+  // WebKit does not surface a download event for an attachment response, so the
+  // presigned request is intercepted and fetched directly.
+  const [request] = await Promise.all([
+    page.waitForRequest((candidate) => candidate.url().includes("/api/storage/local/")),
     row.getByRole("button", { name: "Télécharger" }).click(),
   ]);
-  expect(download.suggestedFilename()).toBe("ticket.png");
-  const fetched = await page.request.get(download.url());
+  const fetched = await page.request.get(request.url());
   expect(fetched.status()).toBe(200);
+  expect(fetched.headers()["content-disposition"] ?? "").toContain('filename="ticket.png"');
   expect((await fetched.body()).length).toBe(70);
 
   await assertAccessible(page, "onglet Documents du lot");

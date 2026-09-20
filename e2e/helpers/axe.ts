@@ -9,7 +9,15 @@ export async function assertAccessible(page: Page, label: string): Promise<void>
     .analyze();
   const violations = results.violations.filter((violation) => BLOCKING.has(violation.impact ?? ""));
   expect(
-    violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
+    violations.map(
+      (v) =>
+        `${v.id}: ${v.nodes
+          .map(
+            (n) =>
+              `${n.target.join(" ")} ${JSON.stringify({ any: n.any, all: n.all, html: n.html }).slice(0, 600)}`,
+          )
+          .join(", ")}`,
+    ),
     `axe on ${label}`,
   ).toEqual([]);
 }
