@@ -51,15 +51,10 @@ const terminalCodes = new Set([
 type MessageRow = typeof tables.messageOutbound.$inferSelect;
 
 export function mailerFor(deps: Deps): Mailer | null {
-  const { RESEND_API_KEY, RESEND_FROM, RESEND_WEBHOOK_SECRET } = deps.env;
-  if (!RESEND_API_KEY || !RESEND_FROM || !RESEND_WEBHOOK_SECRET) return null;
-  return createHttpMailer({
-    config: MailConfig.parse({
-      apiKey: RESEND_API_KEY,
-      from: RESEND_FROM,
-      webhookSecret: RESEND_WEBHOOK_SECRET,
-    }),
-  });
+  const { RESEND_API_KEY, RESEND_FROM, MAIL_FROM } = deps.env;
+  const from = RESEND_FROM ?? MAIL_FROM;
+  if (!RESEND_API_KEY || !from) return null;
+  return createHttpMailer({ config: MailConfig.parse({ apiKey: RESEND_API_KEY, from }) });
 }
 
 async function loadMessage(tx: Tx, id: string): Promise<MessageRow> {

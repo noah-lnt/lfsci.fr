@@ -11,7 +11,8 @@ export const MailConfig = z.object({
   baseUrl: z.url().default(RESEND_API_BASE_URL),
   from: z.email(),
   replyTo: z.email().optional(),
-  webhookSecret: z.string().min(1),
+  /** Only the inbound webhook route needs it; sending does not. */
+  webhookSecret: z.string().min(1).optional(),
   timeoutMs: z.number().int().positive().default(20_000),
 });
 export type MailConfig = z.infer<typeof MailConfig>;
@@ -21,19 +22,22 @@ export function mailConfigFromEnv(source: NodeJS.ProcessEnv = process.env): Mail
     {
       RESEND_API_KEY: requiredString,
       RESEND_BASE_URL: z.url().default(RESEND_API_BASE_URL),
-      RESEND_FROM: z.email(),
+      RESEND_FROM: z.email().optional(),
+      MAIL_FROM: z.email().optional(),
       RESEND_REPLY_TO: z.email().optional(),
-      RESEND_WEBHOOK_SECRET: requiredString,
+      RESEND_WEBHOOK_SECRET: z.string().min(1).optional(),
       RESEND_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
     },
     source,
   );
+  const from = env.RESEND_FROM ?? env.MAIL_FROM;
+  if (!from) throw new Error("invalid environment: RESEND_FROM or MAIL_FROM is required");
   return MailConfig.parse({
     apiKey: env.RESEND_API_KEY,
     baseUrl: env.RESEND_BASE_URL,
-    from: env.RESEND_FROM,
+    from,
     ...(env.RESEND_REPLY_TO ? { replyTo: env.RESEND_REPLY_TO } : {}),
-    webhookSecret: env.RESEND_WEBHOOK_SECRET,
+    ...(env.RESEND_WEBHOOK_SECRET ? { webhookSecret: env.RESEND_WEBHOOK_SECRET } : {}),
     timeoutMs: env.RESEND_TIMEOUT_MS,
   });
 }

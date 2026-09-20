@@ -54,6 +54,7 @@ const shape = {
   GLADIA_API_KEY: optional,
   RESEND_API_KEY: optional,
   RESEND_FROM: optional,
+  MAIL_FROM: optional,
   RESEND_WEBHOOK_SECRET: optional,
   SMSMODE_API_KEY: optional,
   SMSMODE_SENDER: optional,
@@ -94,7 +95,7 @@ export function configuredVendors(env: WorkerEnv): Record<VendorName, boolean> {
     ),
     ocr: Boolean(env.MISTRAL_API_KEY),
     speech: Boolean(env.GLADIA_API_KEY),
-    mail: Boolean(env.RESEND_API_KEY && env.RESEND_FROM && env.RESEND_WEBHOOK_SECRET),
+    mail: Boolean(env.RESEND_API_KEY && (env.RESEND_FROM || env.MAIL_FROM)),
     sms: Boolean(env.SMSMODE_API_KEY && env.SMSMODE_SENDER),
     ai:
       env.AI_PROVIDER === "ollama" ? true : Boolean(env.ANTHROPIC_API_KEY || env.AWS_ACCESS_KEY_ID),
