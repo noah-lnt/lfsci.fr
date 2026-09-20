@@ -5,8 +5,8 @@ import { PageNav } from "@/components/layout/page-nav";
 import { ObjectTabs } from "@/components/patrimoine/object-tabs";
 import { SummaryList, Text } from "@/components/patrimoine/summary-list";
 import { UsageForm } from "@/components/patrimoine/usage-form";
-import { Button } from "@/components/ui/button";
 import { DateValue } from "@/components/ui/date";
+import { LinkButton } from "@/components/ui/link-button";
 import { readOrNotFound } from "@/server/patrimoine/page-data";
 import { getBuilding, getUnit } from "@/server/patrimoine/repository";
 
@@ -65,14 +65,14 @@ export default async function Page({ params }: Props) {
   return (
     <>
       <PageNav title={unit.label} description={`${t("unit.one")} · ${unit.code}`}>
-        <Button
+        <LinkButton
+          href={`/patrimoine/lots/${unit.id}/modifier`}
           variant="outline"
           size="lg"
           className="h-11 sm:h-9"
-          render={<Link href={`/patrimoine/lots/${unit.id}/modifier`} />}
         >
           {t("edit")}
-        </Button>
+        </LinkButton>
       </PageNav>
 
       <ObjectTabs object={{ kind: "unit", id: unit.id }} summary={summary} />

@@ -12,6 +12,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <AppShell
       user={{ name: session.user.name, email: session.user.email }}
+      organizationId={
+        (session.session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null
+      }
       showAdmin={role === "owner_admin"}
       assistant={<AssistantPanel />}
     >

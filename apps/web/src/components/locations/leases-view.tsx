@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { DateValue } from "@/components/ui/date";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LinkButton } from "@/components/ui/link-button";
 import { Money } from "@/components/ui/money";
 import {
   Table,
@@ -95,14 +96,14 @@ export function LeasesView() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button render={<Link href="/locations/baux/nouveau" />}>
+        <LinkButton href="/locations/baux/nouveau">
           <Plus aria-hidden="true" />
           {t("newLease")}
-        </Button>
-        <Button variant="outline" render={<Link href="/locations/locataires" />}>
+        </LinkButton>
+        <LinkButton href="/locations/locataires" variant="outline">
           <Users aria-hidden="true" />
           {t("tenantsLink")}
-        </Button>
+        </LinkButton>
       </div>
 
       {leases.error ? <ErrorBox error={errorPayload(leases.error)} /> : null}

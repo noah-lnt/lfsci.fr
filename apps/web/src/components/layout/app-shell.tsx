@@ -2,16 +2,18 @@
 
 import { useState } from "react";
 import { Header, type HeaderUser } from "./header";
+import { OrganizationProvider } from "./organization-context";
 import { Sidebar } from "./sidebar";
 
 type Props = {
   user: HeaderUser;
+  organizationId: string | null;
   showAdmin: boolean;
   assistant?: React.ReactNode;
   children: React.ReactNode;
 };
 
-export function AppShell({ user, showAdmin, assistant, children }: Props) {
+export function AppShell({ user, organizationId, showAdmin, assistant, children }: Props) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -24,7 +26,9 @@ export function AppShell({ user, showAdmin, assistant, children }: Props) {
       <div className="flex min-w-0 flex-1 flex-col">
         <Header user={user} showAdmin={showAdmin} assistant={assistant} />
         <main className="flex-1 overflow-auto p-4 md:p-6">
-          <div className="page-fade-in space-y-6">{children}</div>
+          <div className="page-fade-in space-y-6">
+            <OrganizationProvider organizationId={organizationId}>{children}</OrganizationProvider>
+          </div>
         </main>
       </div>
     </div>

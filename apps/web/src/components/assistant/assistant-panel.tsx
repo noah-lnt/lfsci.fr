@@ -2,7 +2,6 @@
 
 import type { api, ErrorPayload } from "@lfsci/contracts";
 import { Send } from "lucide-react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { v7 as uuidv7 } from "uuid";
@@ -10,6 +9,7 @@ import { ErrorBox } from "@/components/feedback/error-box";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { LinkButton } from "@/components/ui/link-button";
 import { Textarea } from "@/components/ui/textarea";
 import { REQUEST_ID_HEADER } from "@/lib/rpc";
 
@@ -150,14 +150,14 @@ export function AssistantPanel() {
           <div className="rounded-lg border bg-muted/40 p-3">
             <p className="font-medium">{t("proposal")}</p>
             <p className="mt-1 text-muted-foreground">{t("proposalHint")}</p>
-            <Button
+            <LinkButton
+              href={`/validations#${proposal}`}
               className="mt-2"
               size="sm"
               variant="outline"
-              render={<Link href={`/validations#${proposal}`} />}
             >
               {t("openProposal")}
-            </Button>
+            </LinkButton>
           </div>
         ) : null}
 

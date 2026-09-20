@@ -4,8 +4,8 @@ import { getTranslations } from "next-intl/server";
 import { PageNav } from "@/components/layout/page-nav";
 import { ObjectTabs } from "@/components/patrimoine/object-tabs";
 import { SummaryList, Text } from "@/components/patrimoine/summary-list";
-import { Button } from "@/components/ui/button";
 import { DateValue } from "@/components/ui/date";
+import { LinkButton } from "@/components/ui/link-button";
 import { readOrNotFound } from "@/server/patrimoine/page-data";
 import { getBuilding, getLegalEntity, listUnits } from "@/server/patrimoine/repository";
 
@@ -85,21 +85,21 @@ export default async function Page({ params }: Props) {
   return (
     <>
       <PageNav title={building.name} description={`${t("building.one")} · ${building.code}`}>
-        <Button
+        <LinkButton
+          href={`/patrimoine/immeubles/${building.id}/modifier`}
           variant="outline"
           size="lg"
           className="h-11 sm:h-9"
-          render={<Link href={`/patrimoine/immeubles/${building.id}/modifier`} />}
         >
           {t("edit")}
-        </Button>
-        <Button
+        </LinkButton>
+        <LinkButton
+          href={`/patrimoine/lots/nouveau?immeuble=${building.id}`}
           size="lg"
           className="h-11 sm:h-9"
-          render={<Link href={`/patrimoine/lots/nouveau?immeuble=${building.id}`} />}
         >
           {t("addUnit")}
-        </Button>
+        </LinkButton>
       </PageNav>
 
       <ObjectTabs object={{ kind: "building", id: building.id }} summary={summary} />

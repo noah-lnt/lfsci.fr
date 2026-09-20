@@ -1,11 +1,12 @@
 "use client";
 
 import type { ObjectRef } from "@lfsci/contracts";
-import { Upload } from "lucide-react";
+import { RotateCw, Trash2, Upload, WifiOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DateValue } from "@/components/ui/date";
 import { errorPayload } from "@/lib/rpc";
 import { UploadRejected, useUploadQueue } from "./upload-queue";
 
@@ -20,10 +21,13 @@ export function UploadPanel({ object, onUploaded }: Props) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const queue = useUploadQueue({
-    nature: "to_qualify",
-    ...(object ? { object, relation: "attached" as const } : {}),
-  });
+  const queue = useUploadQueue(
+    {
+      nature: "to_qualify",
+      ...(object ? { object, relation: "attached" as const } : {}),
+    },
+    onUploaded,
+  );
 
   const labels = t.raw("queue") as Record<string, string>;
 
@@ -31,7 +35,6 @@ export function UploadPanel({ object, onUploaded }: Props) {
     for (const file of Array.from(files ?? [])) {
       try {
         await queue.enqueue(file);
-        onUploaded();
       } catch (cause) {
         if (cause instanceof UploadRejected) {
           toast.error(t(`errors.${cause.reason}`));
@@ -94,30 +97,77 @@ export function UploadPanel({ object, onUploaded }: Props) {
         </Button>
       </div>
 
+      {queue.onDevice > 0 ? (
+        <p className="text-sm text-muted-foreground" role="status">
+          {t("queue.onDevice", { count: queue.onDevice })}
+        </p>
+      ) : null}
+
       {queue.items.length === 0 ? null : (
         <div className="space-y-2 rounded-xl border bg-card p-3">
           <h3 className="text-sm font-semibold">{labels.title}</h3>
+
           {queue.unsynced > 0 ? (
-            <p className="text-xs text-destructive" role="status">
-              {t("queue.pendingWarning", { count: queue.unsynced })} {labels.memoryOnly}
+            <p className="text-xs text-muted-foreground" role="status">
+              {t("queue.pendingWarning", { count: queue.unsynced })}
             </p>
           ) : null}
+          {queue.durable ? null : (
+            <p className="text-xs text-destructive" role="status">
+              {labels.memoryOnly}
+            </p>
+          )}
+          {queue.online || queue.unsynced === 0 ? null : (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
+              <WifiOff className="size-3.5" aria-hidden="true" />
+              {labels.offline}
+            </p>
+          )}
+
           <ul className="space-y-1 text-sm" data-testid="upload-queue">
             {queue.items.map((item) => (
               <li key={item.id} className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{item.filename}</span>
                 <span className="text-muted-foreground">{labels[item.state]}</span>
-                {item.state === "failed" ? (
+                <DateValue
+                  value={item.capturedAt}
+                  withTime
+                  className="text-xs text-muted-foreground"
+                />
+                {item.attempts > 1 ? (
+                  <span className="text-xs text-muted-foreground">
+                    {t("queue.attempts", { count: item.attempts })}
+                  </span>
+                ) : null}
+                {item.requestId && item.state !== "synced" ? (
+                  <span className="text-xs text-muted-foreground">{item.requestId}</span>
+                ) : null}
+
+                {item.state === "failed" || item.state === "blocked" ? (
                   <Button
                     variant="outline"
                     size="sm"
+                    aria-label={t("queue.retryOf", { filename: item.filename })}
                     onClick={() => {
-                      void queue.retry(item.id).then(onUploaded);
+                      void queue.retry(item.id);
                     }}
                   >
+                    <RotateCw aria-hidden="true" />
                     {labels.retry}
                   </Button>
                 ) : null}
+                {item.state === "synced" ? null : (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t("queue.removeOf", { filename: item.filename })}
+                    onClick={() => {
+                      void queue.remove(item.id);
+                    }}
+                  >
+                    <Trash2 aria-hidden="true" />
+                  </Button>
+                )}
               </li>
             ))}
           </ul>

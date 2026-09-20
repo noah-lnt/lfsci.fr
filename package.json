@@ -34,13 +34,14 @@
     "spec:docx": "uv run --with python-docx docs/build_spec.py"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@biomejs/biome": "2.5.14",
     "@playwright/test": "1.63.0",
-    "@axe-core/playwright": "4.13.0",
     "@types/node": "24.13.6",
     "@vitest/coverage-v8": "5.0.1",
     "eslint": "9.39.5",
     "eslint-plugin-jsx-a11y": "6.10.2",
+    "fake-indexeddb": "6.2.5",
     "turbo": "2.11.2",
     "typescript": "6.0.3",
     "typescript-eslint": "8.70.0",
