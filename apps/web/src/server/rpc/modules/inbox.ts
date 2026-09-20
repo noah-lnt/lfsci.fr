@@ -6,9 +6,12 @@ import {
   InboxDetail,
   InboxListResult,
   InboxRow,
+  RuleProposalDecisionResult,
+  RuleProposalsResult,
 } from "@/lib/contracts/inbox";
 import { captureNote } from "../../inbox/capture";
 import { decideInbox } from "../../inbox/decide";
+import { decideRuleProposal, listRuleProposals } from "../../inbox/proposals";
 import { getInbox, listAttachTargets, listInbox } from "../../inbox/queries";
 import { validated, withOrganization } from "../base";
 
@@ -31,5 +34,11 @@ export const inboxRouter = {
     captureNote: withOrganization.inbox.captureNote
       .use(validated(InboxRow))
       .handler(({ context, input }) => captureNote(context, input)),
+    ruleProposals: withOrganization.inbox.ruleProposals
+      .use(validated(RuleProposalsResult))
+      .handler(({ context }) => listRuleProposals(context)),
+    decideRuleProposal: withOrganization.inbox.decideRuleProposal
+      .use(validated(RuleProposalDecisionResult))
+      .handler(({ context, input }) => decideRuleProposal(context, input)),
   },
 };

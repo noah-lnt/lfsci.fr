@@ -11,7 +11,12 @@ import { defineJob, type JobOutcome } from "./registry";
 const log = logger("job.irl.refresh");
 
 export const IRL_RULE_CODE = "irl_index";
-export const QUARTERS_KEPT = 4;
+/**
+ * A revision's base is the same quarter of the previous year: with a shorter
+ * window the base drops out as soon as the current quarter is published and
+ * every revision blocks on a missing index (IRL-01).
+ */
+export const QUARTERS_KEPT = 8;
 
 export const IrlRefreshData = JobBase.extend({});
 export type IrlRefreshData = z.infer<typeof IrlRefreshData>;

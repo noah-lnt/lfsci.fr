@@ -4,8 +4,9 @@ import type { api } from "@lfsci/contracts";
 import { CircleAlert, CircleCheck, CircleHelp } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { DateValue } from "@/components/ui/date";
+import type { ModelStatus } from "@/lib/contracts/accueil";
 
-type Props = { banner: api.actionRequired.SituationBanner };
+type Props = { banner: api.actionRequired.SituationBanner; model?: ModelStatus };
 
 const ICON = {
   complete: CircleCheck,
@@ -20,7 +21,7 @@ const TONE = {
 } as const;
 
 /** UX-01: colour never carries the meaning alone — icon plus label, always. */
-export function SituationBanner({ banner }: Props) {
+export function SituationBanner({ banner, model = "unknown" }: Props) {
   const t = useTranslations("accueil.banner");
   const Icon = ICON[banner.controls];
 
@@ -41,6 +42,12 @@ export function SituationBanner({ banner }: Props) {
       {banner.failed.length > 0 ? (
         <span className="text-muted-foreground">
           {t("failed")} : {banner.failed.join(", ")}
+        </span>
+      ) : null}
+      {model === "down" ? (
+        <span data-testid="model-unavailable" className="flex items-center gap-2 font-medium">
+          <CircleAlert className="size-4 shrink-0" aria-hidden="true" />
+          {t("modelDown")}
         </span>
       ) : null}
     </section>

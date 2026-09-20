@@ -6,6 +6,7 @@ import {
   createOdooClient,
   createOdooOperations,
   type ExchangeRecorder,
+  type OdooAccountCodes,
   type OdooClient,
   type OdooOperations,
 } from "@lfsci/odoo";
@@ -47,6 +48,20 @@ export type Deps = {
 
 export type DepsOverrides = Partial<Omit<Deps, "env" | "db" | "admin" | "boss">>;
 
+/** An unset code keeps the connector's Phase 0 default rather than becoming an empty code. */
+function accountCodesFromEnv(env: WorkerEnv): Partial<OdooAccountCodes> {
+  const pairs: [keyof OdooAccountCodes, string | undefined][] = [
+    ["rent", env.ODOO_ACCOUNT_RENT],
+    ["charges", env.ODOO_ACCOUNT_CHARGES],
+    ["accessories", env.ODOO_ACCOUNT_ACCESSORIES],
+    ["deposit", env.ODOO_ACCOUNT_DEPOSIT],
+    ["cca", env.ODOO_ACCOUNT_CCA],
+    ["ccaCounterpart", env.ODOO_ACCOUNT_CCA_COUNTERPART],
+    ["receivable", env.ODOO_ACCOUNT_RECEIVABLE],
+  ];
+  return Object.fromEntries(pairs.filter(([, code]) => code !== undefined));
+}
+
 export function buildDeps(input: {
   env: WorkerEnv;
   db: DbHandle;
@@ -70,7 +85,12 @@ export function buildDeps(input: {
     });
     odoo = {
       client,
-      operations: createOdooOperations(client),
+      operations: createOdooOperations(client, {
+        accounts: accountCodesFromEnv(env),
+        ...(env.ODOO_ANALYTIC_PLAN_ID === undefined
+          ? {}
+          : { analyticPlanId: env.ODOO_ANALYTIC_PLAN_ID }),
+      }),
       database: env.ODOO_DATABASE ?? "unknown",
       timeoutMs,
     };

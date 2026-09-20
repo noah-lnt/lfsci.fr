@@ -1,5 +1,5 @@
 import type { Tx } from "@lfsci/db";
-import { ensureObjectRef, purgeExchanges, tables, withoutTenant, withTenant } from "@lfsci/db";
+import { ensureObjectRef, tables, withTenant } from "@lfsci/db";
 import { logger } from "@lfsci/kernel";
 import { sql } from "drizzle-orm";
 import type { z } from "zod";
@@ -10,7 +10,6 @@ import { defineJob, type JobOutcome } from "./registry";
 
 const log = logger("job.controls.nightly");
 
-export const EXCHANGE_RETENTION_DAYS = 30;
 export const SAMPLE_SIZE = 5;
 
 export const ControlsNightlyData = JobBase.extend({});
@@ -156,6 +155,10 @@ async function persistReport(
   });
 }
 
+/**
+ * `integration_exchange` is purged by `retention.purge`, which owns every
+ * retention window; a second owner would race it on the same rows.
+ */
 export async function nightlyControls(deps: Deps): Promise<JobOutcome> {
   const runAt = deps.now().toISOString();
   const organizationIds = await forEachOrganizationId(deps);
@@ -181,10 +184,6 @@ export async function nightlyControls(deps: Deps): Promise<JobOutcome> {
     throw new Error(`every nightly control failed across ${organizationIds.length} organizations`);
   }
 
-  const purged = await withoutTenant(deps.admin, (tx) =>
-    purgeExchanges(tx, EXCHANGE_RETENTION_DAYS),
-  );
-
   return {
     outcome: "completed",
     runAt,
@@ -193,7 +192,6 @@ export async function nightlyControls(deps: Deps): Promise<JobOutcome> {
     executed: all.length - failedCount,
     failed: failedCount,
     anomalies: all.filter((control) => control.status === "anomalies").length,
-    exchangesPurged: purged,
   };
 }
 

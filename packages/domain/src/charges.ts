@@ -156,3 +156,132 @@ export function regulariseProvisions(lines: readonly RegularisationLine[]): {
     netReceivable: toMoney(sum(computed.map((l) => money(l.totalReceivable)))),
   };
 }
+
+export type AllocationKeyTotal = { total: string; exact: boolean };
+
+// CHA-01: an active key version totals exactly 100 % of the amount to spread.
+export function allocationKeyTotal(shares: readonly { share: string }[]): AllocationKeyTotal {
+  const total = sum(shares.map((s) => decimal(s.share)));
+  return { total: total.toFixed(6), exact: total.equals(1) };
+}
+
+export type ChargePosting = {
+  chargeId: string;
+  label: string;
+  recoverableAmount: string;
+  lotId?: string | undefined;
+  key?: AllocationKey | undefined;
+};
+
+export type RegularisationOccupancy = Occupancy & { lotId: string };
+
+export type SpreadLot = {
+  lotId: string;
+  amount: string;
+  periodDays: number;
+  vacancyDays: number;
+  tenants: { tenantId: string; days: number; amount: string }[];
+  ownerAmount: string;
+};
+
+export type SpreadPosting = {
+  chargeId: string;
+  label: string;
+  recoverableAmount: string;
+  keyVersion: number | null;
+  lots: SpreadLot[];
+};
+
+export type ChargeSpreadBlockedReason =
+  | "empty_key"
+  | "key_shares_not_exact"
+  | "occupancy_exceeds_period"
+  | "posting_without_target";
+
+export type ChargeSpread =
+  | {
+      ok: true;
+      postings: SpreadPosting[];
+      byTenant: { tenantId: string; amount: string }[];
+      ownerAmount: string;
+      total: string;
+    }
+  | Blocked<ChargeSpreadBlockedReason>;
+
+/**
+ * CHA-02: one recoverable charge becomes lot shares through its key version,
+ * then occupant shares through the occupancy days; what no occupant carries is
+ * the owner's vacancy share, never silently redistributed.
+ */
+export function spreadRecoverableCharges(input: {
+  period: DateRange;
+  postings: readonly ChargePosting[];
+  occupancies: readonly RegularisationOccupancy[];
+}): ChargeSpread {
+  const postings: SpreadPosting[] = [];
+  const perTenant = new Map<string, Decimal>();
+  let owner = ZERO;
+
+  for (const posting of input.postings) {
+    let lotAmounts: { lotId: string; amount: string }[];
+    let keyVersion: number | null;
+
+    if (posting.lotId !== undefined) {
+      lotAmounts = [{ lotId: posting.lotId, amount: toMoney(money(posting.recoverableAmount)) }];
+      keyVersion = null;
+    } else if (posting.key !== undefined) {
+      const allocated = allocateExpense({ amount: posting.recoverableAmount, key: posting.key });
+      if (!allocated.ok) return blocked(allocated.reason, allocated.missing);
+      lotAmounts = allocated.lots;
+      keyVersion = allocated.keyVersion;
+    } else {
+      return blocked("posting_without_target", [posting.chargeId]);
+    }
+
+    const lots: SpreadLot[] = [];
+    for (const lot of lotAmounts) {
+      const split = splitByOccupancy({
+        lotId: lot.lotId,
+        amount: lot.amount,
+        period: input.period,
+        occupancies: input.occupancies.filter((occupancy) => occupancy.lotId === lot.lotId),
+      });
+      if (!split.ok) return blocked(split.reason, split.missing);
+      for (const tenant of split.tenants) {
+        perTenant.set(
+          tenant.tenantId,
+          (perTenant.get(tenant.tenantId) ?? ZERO).plus(money(tenant.amount)),
+        );
+      }
+      owner = owner.plus(money(split.ownerAmount));
+      lots.push({
+        lotId: lot.lotId,
+        amount: lot.amount,
+        periodDays: split.periodDays,
+        vacancyDays: split.vacancyDays,
+        tenants: split.tenants,
+        ownerAmount: split.ownerAmount,
+      });
+    }
+
+    postings.push({
+      chargeId: posting.chargeId,
+      label: posting.label,
+      recoverableAmount: toMoney(money(posting.recoverableAmount)),
+      keyVersion,
+      lots,
+    });
+  }
+
+  const byTenant = [...perTenant.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([tenantId, value]) => ({ tenantId, amount: toMoney(value) }));
+
+  return {
+    ok: true,
+    postings,
+    byTenant,
+    ownerAmount: toMoney(owner),
+    total: toMoney(sum([...byTenant.map((entry) => money(entry.amount)), owner])),
+  };
+}

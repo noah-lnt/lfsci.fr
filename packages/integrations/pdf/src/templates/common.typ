@@ -5,13 +5,13 @@
     columns: (1fr, 1fr),
     gutter: 12pt,
     [
-      *#data.sci.nom*\
-      #data.sci.adresse
+      *#data.sci.nom*
+      #if "adresse" in data.sci [\ #data.sci.adresse]
       #if "siret" in data.sci [\ SIRET #data.sci.siret]
     ],
     align(right)[
-      *#data.locataire.nom*\
-      #if "adresse" in data.locataire [#data.locataire.adresse]
+      *#data.locataire.nom*
+      #if "adresse" in data.locataire [\ #data.locataire.adresse]
     ],
   )
   #v(18pt)

@@ -21,3 +21,6 @@ apps/web/.storage/
 docker/odoo/oca/
 docker/odoo/addons/
 scripts/odoo-poc/out/
+
+# Owner data dropped locally for a migration dry run; never committed.
+tmp/

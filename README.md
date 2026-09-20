@@ -29,7 +29,7 @@ The web app listens on http://localhost:3000, the worker on http://localhost:909
 | `npm run check` | Biome, ESLint (a11y + module boundaries), typecheck of every workspace, unit tests |
 | `npm run lint` / `npm run typecheck` / `npm test` | the individual gates |
 | `npm run test:db` | database tests (RLS, audit chain, outbox); needs `TEST_DATABASE_URL` |
-| `npm run e2e` | Playwright on desktop Chrome and iPhone, with axe on every route |
+| `npm run e2e` | Playwright on desktop Chrome and iPhone, with axe on every route; against the dev server locally, against the production build in CI (`scripts/start-standalone.sh`, `E2E_BASE_URL`) |
 | `npm run db:up` / `db:down` / `db:reset` | dev PostgreSQL 18 + pgvector on `127.0.0.1:5434` |
 | `npm run db:migrate` | applies `packages/db/migrations/*.sql` (checksum-tracked) |
 | `npm run db:seed` | idempotent demo data |

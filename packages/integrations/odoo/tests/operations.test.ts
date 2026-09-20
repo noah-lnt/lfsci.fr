@@ -106,7 +106,9 @@ describe("incremental reads", () => {
     ]);
     const operations = createOdooOperations(client);
 
-    expect((await operations.readJournals({ types: ["purchase"] }))[0]?.code).toBe("ACH");
+    const purchase = await operations.readJournals({ types: ["purchase"] });
+    expect(purchase.map((journal) => journal.code)).toContain("ACH");
+    expect(purchase.every((journal) => journal.type === "purchase")).toBe(true);
     const lines = await operations.readBankStatementLines("2026-01-02 08:00:00");
     expect(lines.records[0]?.amount).toBe(750);
   });
@@ -148,11 +150,14 @@ describe("writes", () => {
 
   it("posts a move through action_post", async () => {
     const { server, client } = setup();
-    server.handle("account.move", "action_post", () => true);
+    server.seed("account.move", [
+      { id: 11, move_type: "out_invoice", date: "2026-09-01", invoice_date: "2026-09-01" },
+    ]);
     const operations = createOdooOperations(client);
     await operations.postMove({ id: 11 });
-    expect(server.calls[0]?.method).toBe("action_post");
-    expect(server.calls[0]?.kwargs.ids).toEqual([11]);
+    const posted = server.calls.find((call) => call.method === "action_post");
+    expect(posted?.kwargs.ids).toEqual([11]);
+    expect(server.records("account.move")[0]?.state).toBe("posted");
   });
 
   it("refuses proposeReconciliation until Phase 0 supplies the real method", async () => {

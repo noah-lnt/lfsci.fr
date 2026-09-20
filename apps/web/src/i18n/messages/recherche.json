@@ -1,0 +1,72 @@
+{
+  "recherche": {
+    "title": "Recherche",
+    "description": "Mots, personnes, montants, dates et objets dans le corpus indexé",
+    "queryLabel": "Rechercher dans le corpus",
+    "queryPlaceholder": "fuite cuisine, quittance juin, chaudière…",
+    "submit": "Rechercher",
+    "tooShort": "Saisissez au moins deux caractères.",
+    "prompt": "Saisissez une recherche pour interroger les documents, activités, événements et interventions indexés.",
+    "resultsTitle": "Résultats",
+    "resultsCount": "{count} résultat(s)",
+    "truncated": "D’autres résultats existent au-delà de cette fenêtre : précisez la recherche ou réduisez la période.",
+    "empty": "Aucun résultat dans ce qui est indexé.",
+    "emptyHint": "Cela ne veut pas dire que rien n’existe : reportez-vous à la couverture de l’index ci-dessus avant de conclure.",
+    "open": "Ouvrir l’objet",
+    "noLink": "Aucun écran ne présente cet objet",
+    "indexedAt": "Indexé le",
+    "filters": {
+      "kinds": "Type de source",
+      "allKinds": "Tous les types",
+      "from": "À partir du",
+      "to": "Jusqu’au",
+      "clear": "Effacer les filtres",
+      "clearOne": "Retirer le filtre"
+    },
+    "kind": {
+      "document": "Document",
+      "activity": "Activité",
+      "event": "Événement",
+      "intervention": "Intervention"
+    },
+    "matched": {
+      "words": "Trouvé sur les mots",
+      "meaning": "Trouvé sur le sens",
+      "both": "Trouvé sur les mots et le sens"
+    },
+    "semantic": {
+      "off": "Recherche sur les mots uniquement : la recherche par le sens n’a pas pu être utilisée.",
+      "reason": {
+        "ai_unconfigured": "Aucun modèle n’est configuré.",
+        "provider_has_no_embeddings": "Le modèle configuré ne produit pas d’embeddings.",
+        "unsupported": "Le modèle configuré ne produit pas d’embeddings.",
+        "upstream": "Le modèle n’a pas répondu.",
+        "dimension_mismatch": "Le modèle renvoie une dimension différente de celle de l’index."
+      }
+    },
+    "coverage": {
+      "title": "Couverture de l’index",
+      "summary": "{indexed} élément(s) indexés sur {total} ; {embedded} porteurs d’un vecteur.",
+      "complete": "Tout le corpus connu est indexé.",
+      "incomplete": "Une partie du corpus n’est pas encore indexée : une recherche peut passer à côté.",
+      "degraded": "Au moins une source n’a pas pu être balayée : ce n’est pas « rien trouvé », c’est « je n’ai pas pu regarder ».",
+      "freshness": "Dernière indexation",
+      "never": "Jamais indexé",
+      "notEmbedded": "{count} élément(s) indexés sur les mots mais pas encore sur le sens.",
+      "columns": {
+        "kind": "Source",
+        "indexed": "Indexés",
+        "embedded": "Vectorisés",
+        "freshness": "Fraîcheur",
+        "health": "État"
+      },
+      "health": {
+        "healthy": "À jour",
+        "degraded": "Dégradé",
+        "stalled": "Bloqué",
+        "unavailable": "Indisponible",
+        "unknown": "Jamais balayé"
+      }
+    }
+  }
+}

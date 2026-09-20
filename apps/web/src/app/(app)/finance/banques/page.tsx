@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { BanksTable } from "@/components/finance/portfolio-tables";
+import { BanksView } from "@/components/finance/banks";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("finance.banks");
@@ -8,5 +8,5 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function Page() {
-  return <BanksTable />;
+  return <BanksView />;
 }

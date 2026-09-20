@@ -119,11 +119,19 @@ describe("row mappers", () => {
       fiscalYearEndDay: 31,
       odooCompanyId: null,
       currency: "EUR",
+      addressLine1: "2 rue Henri Farman",
+      addressLine2: null,
+      postalCode: "64230",
+      city: "Lescar",
+      country: "FR",
+      contactEmail: null,
+      contactPhone: null,
       status: "active",
     });
     expect(entity.createdAt).toBe("2026-09-20T06:30:00.123Z");
     expect(entity).not.toHaveProperty("organizationId");
     expect(entity.fiscalYearEndMonth).toBe(12);
+    expect(entity.postalCode).toBe("64230");
   });
 
   it("keeps dates as YYYY-MM-DD and numerics as strings", () => {

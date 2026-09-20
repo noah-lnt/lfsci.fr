@@ -127,3 +127,158 @@ export function assetPosition(input: {
     components,
   };
 }
+
+// IMM-02 : ces durées ne sont pas une politique validée, seulement le repli
+// appliqué tant que le propriétaire n'a pas arrêté les siennes (question 9).
+// Une durée lue sur l'actif l'emporte toujours et l'écran dit laquelle a servi.
+export const DEFAULT_DURATION_YEARS: Record<ComponentKind, number> = {
+  land: 0,
+  building: 30,
+  equipment: 10,
+  works: 15,
+};
+
+export type DurationSource = "asset" | "default" | "none";
+
+export type ResolvedDuration = { months: number; years: number; source: DurationSource };
+
+export function resolveDepreciationMonths(input: {
+  kind: ComponentKind;
+  durationYears?: string | number | null | undefined;
+}): ResolvedDuration {
+  if (!isDepreciable(input.kind)) return { months: 0, years: 0, source: "none" };
+  const stated =
+    input.durationYears === null || input.durationYears === undefined
+      ? Number.NaN
+      : Number(input.durationYears);
+  if (Number.isFinite(stated) && stated > 0) {
+    return { months: Math.round(stated * 12), years: stated, source: "asset" };
+  }
+  const fallback = DEFAULT_DURATION_YEARS[input.kind];
+  if (fallback <= 0) return { months: 0, years: 0, source: "none" };
+  return { months: Math.round(fallback * 12), years: fallback, source: "default" };
+}
+
+export type RegisterComponent = {
+  id: string;
+  label: string;
+  kind: ComponentKind;
+  gross: string;
+  startDate: IsoDateString | null;
+  durationYears?: string | number | null | undefined;
+};
+
+export type RegisterLine = {
+  id: string;
+  label: string;
+  kind: ComponentKind;
+  gross: string;
+  accumulated: string;
+  netBookValue: string;
+  durationMonths: number;
+  durationYears: number;
+  durationSource: DurationSource;
+  computable: boolean;
+};
+
+export type AssetRegister = {
+  asOf: IsoDateString;
+  gross: string;
+  land: string;
+  depreciableGross: string;
+  accumulated: string;
+  netBookValue: string;
+  lines: RegisterLine[];
+  usesDefaultDuration: boolean;
+};
+
+/**
+ * IMM-01 : le registre additionne des composants, jamais une proportion
+ * terrain/construction déduite. Un composant sans date de mise en service
+ * n'est pas amorti : il est brut, et la ligne le dit.
+ */
+export function assetRegister(input: {
+  asOf: IsoDateString;
+  components: readonly RegisterComponent[];
+}): AssetRegister {
+  const lines = input.components.map<RegisterLine>((component) => {
+    const duration = resolveDepreciationMonths(component);
+    const computable =
+      component.startDate !== null && duration.months > 0 && isDepreciable(component.kind);
+    const accumulated = computable
+      ? accumulatedAt(
+          {
+            id: component.id,
+            kind: component.kind,
+            gross: component.gross,
+            startDate: component.startDate as IsoDateString,
+            months: duration.months,
+          },
+          input.asOf,
+        )
+      : toMoney(ZERO);
+    return {
+      id: component.id,
+      label: component.label,
+      kind: component.kind,
+      gross: toMoney(money(component.gross)),
+      accumulated,
+      netBookValue: toMoney(money(component.gross).minus(money(accumulated))),
+      durationMonths: duration.months,
+      durationYears: duration.years,
+      durationSource: duration.source,
+      computable,
+    };
+  });
+
+  const gross = sum(lines.map((line) => money(line.gross)));
+  const land = sum(lines.filter((line) => !isDepreciable(line.kind)).map((l) => money(l.gross)));
+  const accumulated = sum(lines.map((line) => money(line.accumulated)));
+  return {
+    asOf: input.asOf,
+    gross: toMoney(gross),
+    land: toMoney(land),
+    depreciableGross: toMoney(gross.minus(land)),
+    accumulated: toMoney(accumulated),
+    netBookValue: toMoney(gross.minus(accumulated)),
+    lines,
+    usesDefaultDuration: lines.some((line) => line.durationSource === "default"),
+  };
+}
+
+export type AnnualDepreciation = {
+  year: number;
+  amount: string;
+  cumulative: string;
+};
+
+/**
+ * IMM-01 : la dotation annuelle agrège les tranches mensuelles du composant ;
+ * elle ne divise jamais la base par la durée, ce qui perdrait le prorata de la
+ * première et de la dernière année.
+ */
+export function annualDepreciation(components: readonly RegisterComponent[]): AnnualDepreciation[] {
+  const byYear = new Map<number, Decimal>();
+  for (const component of components) {
+    const duration = resolveDepreciationMonths(component);
+    if (component.startDate === null || duration.months <= 0) continue;
+    const slices = straightLineSchedule({
+      id: component.id,
+      kind: component.kind,
+      gross: component.gross,
+      startDate: component.startDate,
+      months: duration.months,
+    });
+    for (const slice of slices) {
+      const year = Number(slice.periodStart.slice(0, 4));
+      byYear.set(year, (byYear.get(year) ?? ZERO).plus(money(slice.amount)));
+    }
+  }
+  let cumulative = ZERO;
+  return [...byYear.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([year, amount]) => {
+      cumulative = cumulative.plus(amount);
+      return { year, amount: toMoney(amount), cumulative: toMoney(cumulative) };
+    });
+}

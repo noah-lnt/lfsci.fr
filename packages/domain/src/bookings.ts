@@ -108,3 +108,56 @@ export function matchPayout(input: {
     netPayout: expectation.netPayout,
   };
 }
+
+export type PayoutAdjustmentKind = "correction" | "retention" | "other_period";
+
+export type PayoutAdjustment = {
+  reference: string;
+  kind: PayoutAdjustmentKind;
+  amount: string;
+  label?: string | undefined;
+};
+
+export type GroupedPayout = {
+  expectation: PayoutExpectation;
+  adjustments: PayoutAdjustment[];
+  adjustmentTotal: string;
+  bookingNet: string;
+  expectedNet: string;
+  declaredNet: string;
+  difference: string;
+  matched: boolean;
+  match: PayoutMatch;
+};
+
+/**
+ * AIR-02: one transfer settles several stays and may carry corrections or
+ * retentions from another period. They stay distinct from the booking lines and
+ * the difference is published, never absorbed to force a balance.
+ */
+export function reconcileGroupedPayout(input: {
+  bookings: readonly Booking[];
+  adjustments?: readonly PayoutAdjustment[];
+  declaredNet: string;
+}): GroupedPayout {
+  const expectation = expectedPayout(input.bookings);
+  const adjustments = [...(input.adjustments ?? [])];
+  const adjustmentTotal = toMoney(sum(adjustments.map((a) => money(a.amount))));
+  const bookingNet = expectation.netPayout;
+  const expectedNet = toMoney(money(bookingNet).plus(money(adjustmentTotal)));
+  const difference = toMoney(money(input.declaredNet).minus(money(expectedNet)));
+  return {
+    expectation,
+    adjustments,
+    adjustmentTotal,
+    bookingNet,
+    expectedNet,
+    declaredNet: toMoney(money(input.declaredNet)),
+    difference,
+    matched: money(difference).isZero(),
+    match: matchPayout({
+      bookings: input.bookings,
+      bankAmount: toMoney(money(input.declaredNet).minus(money(adjustmentTotal))),
+    }),
+  };
+}

@@ -1,4 +1,6 @@
-import { money, sum, toMoney, ZERO } from "./money";
+import { Decimal } from "decimal.js";
+import { buildSchedule } from "./loans";
+import { decimal, money, roundCent, sum, toMoney, ZERO } from "./money";
 import { type Blocked, blocked } from "./result";
 
 export type PeriodFacts = {
@@ -133,5 +135,136 @@ export function applyInternalTransfer(input: {
     variation: toMoney(consolidatedAfter.minus(consolidatedBefore)),
     expense: toMoney(fees),
     income: toMoney(ZERO),
+  };
+}
+
+export type BalanceBasis = "ledger" | "computed" | "opening_only";
+
+export type AccountMovement = {
+  bookedOn: string;
+  amount: string;
+  fromLedger: boolean;
+};
+
+export type AccountBalance = {
+  balance: string;
+  asOf: string;
+  basis: BalanceBasis;
+  movements: number;
+  ledgerMovements: number;
+  importedMovements: number;
+};
+
+/**
+ * BAN-01 : le solde n'est pas stocké. Il vaut le solde d'ouverture plus les
+ * mouvements retenus, et il porte sa base : `ledger` quand toutes les lignes
+ * viennent du grand livre, `computed` dès qu'une ligne vient d'un import,
+ * `opening_only` quand aucun mouvement n'est encore connu. Aucun montant n'est
+ * affiché sans cette base.
+ */
+export function bankBalanceAt(input: {
+  openingBalance: string;
+  openingBalanceOn?: string | null | undefined;
+  movements: readonly AccountMovement[];
+  asOf: string;
+}): AccountBalance {
+  // The opening balance is the balance at the close of `openingBalanceOn`:
+  // a movement booked that day is already inside it.
+  const after = input.openingBalanceOn ?? null;
+  const counted = input.movements.filter(
+    (movement) => movement.bookedOn <= input.asOf && (after === null || movement.bookedOn > after),
+  );
+  const balance = sum([money(input.openingBalance), ...counted.map((m) => money(m.amount))]);
+  const ledgerMovements = counted.filter((movement) => movement.fromLedger).length;
+  const lastBookedOn = counted
+    .map((movement) => movement.bookedOn)
+    .sort()
+    .at(-1);
+  const basis: BalanceBasis =
+    counted.length === 0
+      ? "opening_only"
+      : ledgerMovements === counted.length
+        ? "ledger"
+        : "computed";
+  return {
+    balance: toMoney(balance),
+    asOf: lastBookedOn ?? input.openingBalanceOn ?? input.asOf,
+    basis,
+    movements: counted.length,
+    ledgerMovements,
+    importedMovements: counted.length - ledgerMovements,
+  };
+}
+
+export type ScenarioAssumptions = {
+  price: string;
+  fees: string;
+  works: string;
+  equity: string;
+  loanAmount: string;
+  loanAnnualRate: string;
+  loanMonths: number;
+  expectedRentYearly: string;
+  chargesYearly: string;
+  vacancyRate?: string | undefined;
+  unpaidRate?: string | undefined;
+};
+
+export type ScenarioOutcome = {
+  totalBudget: string;
+  financed: string;
+  financingGap: string;
+  effectiveRentYearly: string;
+  netOperatingIncomeYearly: string;
+  monthlyInstallment: string;
+  monthlyCashflow: string;
+  yearlyCashflow: string;
+  grossYield: string;
+  netYield: string;
+};
+
+const percent = (numerator: Decimal, denominator: Decimal): string =>
+  denominator.isZero() ? "0.00" : toMoney(numerator.dividedBy(denominator).times(100));
+
+/**
+ * ACQ-01 : une hypothèse chiffrée, pas une promesse de rendement. La vacance et
+ * les impayés s'appliquent au loyer attendu ; l'impôt n'est pas modélisé.
+ */
+export function acquisitionOutcome(input: ScenarioAssumptions): ScenarioOutcome {
+  const price = money(input.price);
+  const fees = money(input.fees);
+  const works = money(input.works);
+  const totalBudget = price.plus(fees).plus(works);
+  const financed = money(input.loanAmount).plus(money(input.equity));
+
+  const rent = money(input.expectedRentYearly);
+  const losses = decimal(input.vacancyRate ?? "0").plus(decimal(input.unpaidRate ?? "0"));
+  const effectiveRent = roundCent(rent.times(Decimal.max(ZERO, Decimal.sub(1, losses))));
+  const noi = effectiveRent.minus(money(input.chargesYearly));
+
+  const schedule =
+    input.loanMonths > 0 && !money(input.loanAmount).isZero()
+      ? buildSchedule({
+          principal: toMoney(money(input.loanAmount)),
+          annualNominalRate: input.loanAnnualRate,
+          months: input.loanMonths,
+          firstDueDate: "2026-01-01",
+        })
+      : null;
+  const firstInstallment = schedule?.installments.find((line) => !line.deferred);
+  const monthly = money(firstInstallment?.total ?? "0.00");
+
+  const yearlyCashflow = noi.minus(monthly.times(12));
+  return {
+    totalBudget: toMoney(totalBudget),
+    financed: toMoney(financed),
+    financingGap: toMoney(totalBudget.minus(financed)),
+    effectiveRentYearly: toMoney(effectiveRent),
+    netOperatingIncomeYearly: toMoney(noi),
+    monthlyInstallment: toMoney(monthly),
+    monthlyCashflow: toMoney(yearlyCashflow.dividedBy(12)),
+    yearlyCashflow: toMoney(yearlyCashflow),
+    grossYield: percent(rent, totalBudget),
+    netYield: percent(noi, totalBudget),
   };
 }

@@ -1,4 +1,5 @@
 import { hostname } from "node:os";
+import { DEFAULT_EMBED_DIMENSIONS, DEFAULT_OLLAMA_MODEL_EMBED } from "@lfsci/ai";
 import { parseEnv, requiredString } from "@lfsci/kernel";
 import { z } from "zod";
 
@@ -7,14 +8,18 @@ import { z } from "zod";
  * blank has to read as absent: the worker must boot with no vendor at all and
  * report `sources_unavailable` on the jobs that need one (spec SYN-06).
  */
-const optional = z.preprocess(
-  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
-  z.string().trim().min(1).optional(),
-);
+const blankIsAbsent = (value: unknown): unknown =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
+const optional = z.preprocess(blankIsAbsent, z.string().trim().min(1).optional());
+const optionalNumber = z.preprocess(blankIsAbsent, z.coerce.number().int().positive().optional());
 const optionalProvider = z.preprocess(
-  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  blankIsAbsent,
   z.enum(["ollama", "anthropic", "bedrock"]).optional(),
 );
+const textOr = (fallback: string) =>
+  z.preprocess(blankIsAbsent, z.string().trim().min(1).default(fallback));
+const numberOr = (fallback: number) =>
+  z.preprocess(blankIsAbsent, z.coerce.number().int().positive().default(fallback));
 const shape = {
   DATABASE_URL: requiredString,
   DATABASE_ADMIN_URL: requiredString,
@@ -30,6 +35,17 @@ const shape = {
   ODOO_API_KEY: optional,
   ODOO_RATE_LIMIT_PER_SECOND: z.coerce.number().positive().default(1),
 
+  // Chart accounts, by code. Empty falls back to the codes measured in Phase 0;
+  // none of them is confirmed by the accountant (docs/QUESTIONS.md item 8b).
+  ODOO_ACCOUNT_RENT: optional,
+  ODOO_ACCOUNT_CHARGES: optional,
+  ODOO_ACCOUNT_ACCESSORIES: optional,
+  ODOO_ACCOUNT_DEPOSIT: optional,
+  ODOO_ACCOUNT_CCA: optional,
+  ODOO_ACCOUNT_CCA_COUNTERPART: optional,
+  ODOO_ACCOUNT_RECEIVABLE: optional,
+  ODOO_ANALYTIC_PLAN_ID: optionalNumber,
+
   STORAGE_BUCKET: optional,
   STORAGE_ACCESS_KEY_ID: optional,
   STORAGE_SECRET_ACCESS_KEY: optional,
@@ -38,6 +54,7 @@ const shape = {
   GLADIA_API_KEY: optional,
   RESEND_API_KEY: optional,
   RESEND_FROM: optional,
+  MAIL_FROM: optional,
   RESEND_WEBHOOK_SECRET: optional,
   SMSMODE_API_KEY: optional,
   SMSMODE_SENDER: optional,
@@ -47,6 +64,9 @@ const shape = {
   OLLAMA_BASE_URL: optional,
   OLLAMA_MODEL_TEXT: optional,
   OLLAMA_MODEL_VISION: optional,
+  OLLAMA_MODEL_EMBED: textOr(DEFAULT_OLLAMA_MODEL_EMBED),
+  // `embedding.vector` is vector(1024) in migration 0001: another width is a column migration.
+  AI_EMBED_DIMENSIONS: numberOr(DEFAULT_EMBED_DIMENSIONS),
   OLLAMA_TIMEOUT_MS: optional,
   OLLAMA_API_KEY: optional,
 
@@ -75,7 +95,7 @@ export function configuredVendors(env: WorkerEnv): Record<VendorName, boolean> {
     ),
     ocr: Boolean(env.MISTRAL_API_KEY),
     speech: Boolean(env.GLADIA_API_KEY),
-    mail: Boolean(env.RESEND_API_KEY && env.RESEND_FROM && env.RESEND_WEBHOOK_SECRET),
+    mail: Boolean(env.RESEND_API_KEY && (env.RESEND_FROM || env.MAIL_FROM)),
     sms: Boolean(env.SMSMODE_API_KEY && env.SMSMODE_SENDER),
     ai:
       env.AI_PROVIDER === "ollama" ? true : Boolean(env.ANTHROPIC_API_KEY || env.AWS_ACCESS_KEY_ID),

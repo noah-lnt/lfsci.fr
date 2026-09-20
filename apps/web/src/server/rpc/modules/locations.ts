@@ -1282,7 +1282,7 @@ export const locationsRouter = {
                 previousIndexValue: proposal.baseIndex.value,
                 newIndexValue: proposal.newIndex.value,
                 baseRent: proposal.currentRent,
-                computedRentUnrounded: proposal.newRent,
+                computedRentUnrounded: proposal.newRentUnrounded,
                 proposedRent: proposal.newRent,
                 currency: lease.currency,
                 requestedOn: requestDate,

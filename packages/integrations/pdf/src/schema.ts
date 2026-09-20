@@ -33,6 +33,12 @@ export type RecuData = z.infer<typeof RecuData>;
 
 export const DecompteData = Base.extend({
   exercice: z.string().min(1),
+  occupation: z.object({
+    debut: z.string().min(1),
+    fin: z.string().min(1),
+    jours: z.number().int().nonnegative(),
+    joursPeriode: z.number().int().positive(),
+  }),
   lignes: z
     .array(
       z.object({
@@ -44,16 +50,37 @@ export const DecompteData = Base.extend({
     )
     .min(1),
   totalCharges: Amount,
-  provisionsVersees: Amount,
+  provisionsAppelees: Amount,
+  provisionsPayees: Amount,
+  // CHA-02: les provisions impayées restent une créance du compte locataire ;
+  // le décompte les affiche à part et ne les refacture pas.
+  provisionsImpayees: Amount,
   solde: Amount,
   libelleSolde: z.string().min(1),
 });
 export type DecompteData = z.infer<typeof DecompteData>;
 
+export const RevisionData = Base.extend({
+  indice: z.string().min(1),
+  trimestreReference: z.string().min(1),
+  ancienIndice: z.string().min(1),
+  nouvelIndice: z.string().min(1),
+  loyerActuel: Amount,
+  loyerRevise: Amount,
+  loyerReviseNonArrondi: z.string().min(1),
+  variation: Amount,
+  chargesProvision: Amount,
+  dateEffet: z.string().min(1),
+  clause: z.string().min(1),
+  source: z.string().min(1),
+});
+export type RevisionData = z.infer<typeof RevisionData>;
+
 export const templateSchemas = {
   quittance: QuittanceData,
   recu: RecuData,
   decompte: DecompteData,
+  revision: RevisionData,
 } as const;
 
 export type TemplateName = keyof typeof templateSchemas;

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { sqlEnums } from "../src/enums";
@@ -37,10 +37,45 @@ const parseSqlEnums = (sql: string): Map<string, string[]> => {
   return found;
 };
 
+/** Migrations after 0001 add their CHECK constraints with ALTER TABLE. */
+const parseAlterEnums = (sql: string, file: string): Map<string, string[]> => {
+  const found = new Map<string, string[]>();
+  const stripped = sql.replace(/--.*$/gm, "").replace(/\s+/g, " ");
+  const statements = /ALTER TABLE (\w+)([^;]*);/g;
+  let statement = statements.exec(stripped);
+  while (statement !== null) {
+    const table = statement[1];
+    const checks = /CHECK \(\s*(\w+) IN \(([^)]*)\)/g;
+    let match = checks.exec(statement[2] ?? "");
+    while (match !== null) {
+      const column = match[1];
+      const values = [...(match[2] ?? "").matchAll(/'([^']*)'/g)].map((m) => m[1] as string);
+      if (table !== undefined && column !== undefined) found.set(`${table}.${column}`, values);
+      match = checks.exec(statement[2] ?? "");
+    }
+    statement = statements.exec(stripped);
+  }
+  // A row-level security policy's WITH CHECK is not a value list; only a column
+  // CHECK (... IN (...)) carries an enum this test can compare.
+  const columnChecks = stripped.replace(/WITH CHECK/g, "");
+  if (found.size === 0 && /CHECK \(/.test(columnChecks) && !/CREATE TABLE/.test(columnChecks)) {
+    throw new Error(`${file}: a CHECK was written in a form this parser does not read`);
+  }
+  return found;
+};
+
+const migrationsDir = fileURLToPath(new URL("../../db/migrations", import.meta.url));
+
 const sqlText = readFileSync(schemaPath, "utf8");
 const parsed = parseSqlEnums(sqlText);
+for (const file of readdirSync(migrationsDir).filter((name) => name.endsWith(".sql"))) {
+  if (file.startsWith("0001")) continue;
+  const text = readFileSync(`${migrationsDir}/${file}`, "utf8");
+  for (const [key, values] of parseSqlEnums(text)) parsed.set(key, values);
+  for (const [key, values] of parseAlterEnums(text, file)) parsed.set(key, values);
+}
 
-describe("Zod enums match docs/schema/lfsci.sql", () => {
+describe("Zod enums match the SQL CHECK constraints", () => {
   it("the parser finds the schema's CHECK constraints", () => {
     expect(parsed.size).toBeGreaterThan(100);
   });

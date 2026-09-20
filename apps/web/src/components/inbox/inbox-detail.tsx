@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -9,6 +8,7 @@ import { ErrorBox } from "@/components/feedback/error-box";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { LinkButton } from "@/components/ui/link-button";
 import {
   Select,
   SelectContent,
@@ -87,9 +87,9 @@ export function InboxDetail({ id, onDecided }: Props) {
         <h3 className="text-xs font-medium text-muted-foreground">{t("original")}</h3>
         <p className="mt-1 whitespace-pre-wrap text-sm">{item.bodyRaw ?? item.summary ?? "—"}</p>
         {item.documentId ? (
-          <Button className="mt-2" variant="outline" size="sm" render={<Link href={href} />}>
+          <LinkButton href={href} className="mt-2" variant="outline" size="sm">
             {t("openDocument")}
-          </Button>
+          </LinkButton>
         ) : null}
       </section>
 

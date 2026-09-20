@@ -1,3 +1,4 @@
+export * from "./arrears";
 export * from "./audit";
 export * from "./canonical";
 export * from "./client";

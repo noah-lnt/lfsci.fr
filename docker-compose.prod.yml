@@ -2,8 +2,8 @@ name: lfsci
 
 x-app-env: &app-env
   NODE_ENV: production
-  DATABASE_URL: postgres://lfsci:${DB_PASSWORD:?DB_PASSWORD is required}@db:5432/lfsci
-  DATABASE_ADMIN_URL: postgres://lfsci:${DB_PASSWORD:?DB_PASSWORD is required}@db:5432/lfsci
+  DATABASE_URL: postgres://lfsci_service:${APP_DB_PASSWORD:?APP_DB_PASSWORD is required}@db:5432/lfsci
+  DATABASE_ADMIN_URL: postgres://lfsci_maintenance:${MAINTENANCE_DB_PASSWORD:?MAINTENANCE_DB_PASSWORD is required}@db:5432/lfsci
   APP_URL: https://${APP_HOST:?APP_HOST is required}
   BETTER_AUTH_URL: https://${APP_HOST:?APP_HOST is required}
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
@@ -19,8 +19,10 @@ x-app-env: &app-env
   ODOO_RATE_LIMIT_PER_SECOND: ${ODOO_RATE_LIMIT_PER_SECOND:-1}
   AI_PROVIDER: ${AI_PROVIDER:-ollama}
   OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:?OLLAMA_BASE_URL is required}
-  OLLAMA_MODEL_TEXT: ${OLLAMA_MODEL_TEXT:-qwen3:32b}
+  OLLAMA_MODEL_TEXT: ${OLLAMA_MODEL_TEXT:-qwen3.5:27b}
   OLLAMA_MODEL_VISION: ${OLLAMA_MODEL_VISION:-qwen3.5:27b}
+  OLLAMA_MODEL_EMBED: ${OLLAMA_MODEL_EMBED:-bge-m3:567m}
+  AI_EMBED_DIMENSIONS: ${AI_EMBED_DIMENSIONS:-1024}
   OLLAMA_TIMEOUT_MS: ${OLLAMA_TIMEOUT_MS:-120000}
   OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
   AI_MODEL: ${AI_MODEL:-claude-opus-5}
@@ -33,6 +35,7 @@ x-app-env: &app-env
   GLADIA_API_KEY: ${GLADIA_API_KEY:-}
   RESEND_API_KEY: ${RESEND_API_KEY:-}
   RESEND_WEBHOOK_SECRET: ${RESEND_WEBHOOK_SECRET:-}
+  RESEND_FROM: ${RESEND_FROM:-noreply@lfsci.fr}
   MAIL_FROM: ${MAIL_FROM:-noreply@lfsci.fr}
   SENTRY_DSN: ${SENTRY_DSN:-}
   LOG_LEVEL: ${LOG_LEVEL:-info}
@@ -91,7 +94,10 @@ services:
       dockerfile: apps/worker/Dockerfile
     container_name: lfsci-migrate
     profiles: [migrate]
-    environment: *app-env
+    environment:
+      <<: *app-env
+      DATABASE_URL: postgres://lfsci:${DB_PASSWORD:?DB_PASSWORD is required}@db:5432/lfsci
+      DATABASE_ADMIN_URL: postgres://lfsci:${DB_PASSWORD:?DB_PASSWORD is required}@db:5432/lfsci
     command: ["node", "dist/migrate.js"]
     depends_on:
       db:
@@ -110,6 +116,8 @@ services:
       POSTGRES_DB: lfsci
       POSTGRES_USER: lfsci
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?APP_DB_PASSWORD is required}
+      MAINTENANCE_DB_PASSWORD: ${MAINTENANCE_DB_PASSWORD:?MAINTENANCE_DB_PASSWORD is required}
     volumes:
       - lfsci-pgdata:/var/lib/postgresql
     networks: [internal]

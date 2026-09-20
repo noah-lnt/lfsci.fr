@@ -48,7 +48,7 @@ describe("extractDocument request shape", () => {
       kind: "receipt",
       ocrText: "TOTAL 12,00",
       pdfBase64: "JVBERi0=",
-      pages: [{ pngBase64: "iVBORw0=" }],
+      pages: [{ base64: "iVBORw0=", mediaType: "image/png" }],
     });
 
     const call = calls[0];

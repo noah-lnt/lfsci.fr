@@ -22,6 +22,12 @@ export default defineConfig({
     ? undefined
     : {
         command: "npm run dev -w @lfsci/web",
+        // Seven workers sign up at once from one address; the production limit is not the point here.
+        env: {
+          RATE_LIMIT_AUTH_PER_MINUTE: "10000",
+          RATE_LIMIT_ASSISTANT_PER_MINUTE: "10000",
+          AUTH_RATE_LIMIT: "off",
+        },
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

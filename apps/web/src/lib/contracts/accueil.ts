@@ -2,6 +2,10 @@ import { api, IsoDate, IsoDateTime, Money, ObjectRef } from "@lfsci/contracts";
 import { oc } from "@orpc/contract";
 import { z } from "zod";
 
+/** Mirrors `ComponentStatus` without importing `contract.ts`, which imports this file. */
+export const ModelStatus = z.enum(["up", "down", "unknown"]);
+export type ModelStatus = z.infer<typeof ModelStatus>;
+
 /** UX-01: a card names why it is there, what it blocks, what to do and what that changes. */
 export const ActionCardKind = z.enum([
   "approval_pending",
@@ -10,6 +14,7 @@ export const ActionCardKind = z.enum([
   "deadline_due",
   "command_exception",
   "document_missing",
+  "insurance_certificate",
 ]);
 export type ActionCardKind = z.infer<typeof ActionCardKind>;
 
@@ -53,6 +58,8 @@ export type OccupancyIndicator = z.infer<typeof OccupancyIndicator>;
 
 export const SituationResult = z.object({
   banner: api.actionRequired.SituationBanner,
+  /** UX-01: an unreachable local model is named on the banner, never silently ignored. */
+  model: ModelStatus,
   indicators: z.object({
     occupancy: OccupancyIndicator.nullable(),
     collectedThisMonth: AmountIndicator,

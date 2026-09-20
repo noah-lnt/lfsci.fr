@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { hashPayload } from "./canonical";
 import type { DbHandle, Tx } from "./client";
 import {
   activity,
@@ -41,6 +42,8 @@ import {
   personRole,
   rentTerm,
   rentTermVersion,
+  rule,
+  ruleVersion,
   supplier,
   unit,
   unitUsagePeriod,
@@ -80,6 +83,9 @@ export const SEED_IDS = {
   inboxItem: id(143),
 } as const;
 
+const retentionRuleId = (index: number) => id(600 + index);
+const retentionVersionId = (index: number) => id(650 + index);
+
 const unitId = (building: "lilas" | "port", index: number) =>
   id((building === "lilas" ? 200 : 300) + index);
 
@@ -93,6 +99,107 @@ function monthWindow(offset: number) {
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, 1));
   const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset + 1, 0));
   return { start: isoDate(start), end: isoDate(end), due: isoDate(start) };
+}
+
+/**
+ * Retention matrix of spec RGPD-02, as the `rule` rows the purge job reads.
+ * `activeDays` is the active-base window; `action` says what leaving it means.
+ * The CNIL reference for an unsuccessful application is three months, the
+ * accounting reference ten years from the close: both are proposals until the
+ * owner validates the matrix (docs/rgpd.md).
+ */
+export const RETENTION_MATRIX = [
+  {
+    code: "retention.application_file",
+    dataClass: "application_file",
+    label: "Candidature non retenue et pièces de solvabilité",
+    activeDays: 90,
+    action: "delete",
+  },
+  {
+    code: "retention.voice_audio",
+    dataClass: "voice_audio",
+    label: "Audio brut d’une note vocale transcrite",
+    activeDays: 7,
+    action: "delete",
+  },
+  {
+    code: "retention.integration_exchange",
+    dataClass: "integration_exchange",
+    label: "Échanges bruts avec les intégrations",
+    activeDays: 30,
+    action: "delete",
+  },
+  {
+    code: "retention.technical_log",
+    dataClass: "technical_log",
+    label: "Journaux techniques et audit de sécurité",
+    activeDays: 365,
+    action: "aggregate",
+  },
+  {
+    code: "retention.lease_file",
+    dataClass: "lease_file",
+    label: "Bail, compte locataire et garantie",
+    activeDays: 1825,
+    action: "pseudonymize",
+  },
+  {
+    code: "retention.accounting",
+    dataClass: "accounting",
+    label: "Factures, écritures et justificatifs comptables",
+    activeDays: 3650,
+    action: "archive",
+  },
+  {
+    code: "retention.inspection_media",
+    dataClass: "inspection_media",
+    label: "Photos d’état des lieux, sinistres et litiges",
+    activeDays: 1825,
+    action: "review",
+  },
+  {
+    code: "retention.backup",
+    dataClass: "backup",
+    label: "Sauvegardes de la base",
+    activeDays: 35,
+    action: "expire",
+  },
+] as const;
+
+async function seedRetentionRules(tx: Tx, organizationId: string, effectiveFrom: string) {
+  for (const [index, entry] of RETENTION_MATRIX.entries()) {
+    const definition = {
+      dataClass: entry.dataClass,
+      activeDays: entry.activeDays,
+      action: entry.action,
+    };
+    await tx
+      .insert(rule)
+      .values({
+        id: retentionRuleId(index),
+        organizationId,
+        code: entry.code,
+        domain: "retention",
+        label: entry.label,
+        origin: "template",
+        status: "active",
+      })
+      .onConflictDoNothing();
+    await tx
+      .insert(ruleVersion)
+      .values({
+        id: retentionVersionId(index),
+        organizationId,
+        ruleId: retentionRuleId(index),
+        sequence: 1,
+        definition,
+        definitionHash: hashPayload(definition),
+        effectiveFrom,
+        status: "active",
+      })
+      .onConflictDoNothing();
+  }
 }
 
 export type SeedResult = { organizationId: string };
@@ -135,6 +242,8 @@ async function seedTenantData(tx: Tx): Promise<void> {
   const organizationId = SEED_IDS.organization;
   const current = monthWindow(0);
   const previous = monthWindow(-1);
+
+  await seedRetentionRules(tx, organizationId, previous.start);
 
   await tx
     .insert(legalEntity)

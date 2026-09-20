@@ -88,6 +88,59 @@ and a yearly major upgrade that Community does **not** automate — OpenUpgrade 
 all have published their next branch first (there is no 19.0 for `bank-statement-import` or `account-reconcile`
 today). That upgrade, not the licence, is the real bill.
 
+## Measured for slice 1 (2026-09-20, same local instance)
+
+Probed with `fields_get` and a posted invoice through `object.execute_kw`; the connector's defaults come from here.
+
+### Lock dates on `res.company`
+
+| Field | Type | Read as the bot user |
+|---|---|---|
+| `fiscalyear_lock_date` | date | `false` (Global Lock Date) |
+| `tax_lock_date` | date | `false` |
+| `sale_lock_date` | date | `false` — **replaces `period_lock_date`** |
+| `purchase_lock_date` | date | `false` — idem |
+| `hard_lock_date` | date | `2026-08-20`, set during step (i) and not removable |
+| `user_*_lock_date` (five twins) | date | computed per caller: `1-01-01` when nothing locks, `2026-08-20` for `user_hard_lock_date` |
+
+- **`period_lock_date` does not exist on 18**: asking for it faults. The connector requests the five fields above and
+  adds `period_lock_date` only when a capability snapshot proves it, so an older or newer server still works.
+- The unset computed twins read **`1-01-01`**, not `false`. Anything that is not a four-digit ISO date is therefore
+  read as "no lock"; a naive `Date` parse of `1-01-01` would not be.
+- The verdict uses the **company** fields, never the `user_*` twins: an advisor account bypasses the soft locks in
+  Odoo, and WF-12 says the SaaS refuses whatever rights the bot happens to hold.
+- Odoo locks a date **on or before** the lock, so the refusal is `date <= lock`.
+
+### Analytic distribution per unit
+
+- `account.move.line.analytic_distribution` is a **json** field, `{"<analytic account id>": 100}`. An invoice posted
+  with it kept the distribution on both income lines and left the receivable line at `false` (verified on
+  `INV/2026/00025`, 780.00 EUR, accounts 708300 and 706000, receivable 411100 chosen by Odoo).
+- `account.analytic.account` needs `name` and **`plan_id` (mandatory)**; `code` is what the SaaS keys the unit on.
+  The model carries **no `x_lfsci_ref`** — the four Studio fields were added to `account.move`, `res.partner`,
+  `account.bank.statement.line` and `ir.attachment` only, so the connector creates analytic accounts without a
+  reference field and finds them back by `code`.
+- The bot user could not read `account.analytic.plan` (`AccessError`: needs *Technical/Analytic Accounting*). The
+  group was granted on the local instance to finish the measurement; **on Odoo Online the bot needs it too**, or
+  `ODOO_ANALYTIC_PLAN_ID` must be set so no plan lookup is needed.
+
+### Chart codes used as defaults
+
+Present in the French chart of the local instance; **none is confirmed by the accountant** (`ODOO_ACCOUNT_*` overrides each):
+
+| Use | Code | Odoo label |
+|---|---|---|
+| Rent | `708300` | Sundry rentals — the code step (c) already used for the rent line |
+| Charge provisions | `706000` | Services supplied |
+| Accessories | `708800` | Other income from ancillary activities |
+| Deposits received | `165100` | Deposits |
+| Partner current account | `455100` | Partners/associates - Current accounts - Principal |
+| CCA counterpart | `471000` | Suspense accounts — deliberately a waiting account |
+| Receivable | `411100` | Customers - Sales of goods or services |
+
+Journals seen: `INV` (sale) 8, `BILL` (purchase) 9, `MISC` (general) 10, `BNK1` (bank) 13, `CSH1`, `CABA`, `EXCH`.
+The current-account entry takes the first `general` journal unless one is passed.
+
 ## Differences from the JSON-2 design (keep the connector right for Odoo Online 19)
 
 1. JSON-2 is one HTTP call with a bearer and everything in keywords; JSON-RPC needs a prior `authenticate`,

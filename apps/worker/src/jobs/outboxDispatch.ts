@@ -1,6 +1,7 @@
 import type { CommandRow, OutboxRow, Tx } from "@lfsci/db";
 import {
   assertApprovalValid,
+  assertExpectedVersion,
   claimOutbox,
   completeOutbox,
   failOutbox,
@@ -18,8 +19,9 @@ import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { createBreaker } from "../breaker";
 import { JobBase } from "../correlation";
-import type { Deps, OdooPort } from "../deps";
+import type { Deps } from "../deps";
 import { withExchangeContext } from "../exchange-recorder";
+import { runOperation } from "./odooCommands";
 import { defineJob, type JobOutcome } from "./registry";
 
 const log = logger("job.outbox.dispatch");
@@ -66,86 +68,6 @@ const terminalCodes = new Set([
   "VALIDATION",
   "RULE_VIOLATION",
 ]);
-
-export type OperationResult = {
-  externalId: number | null;
-  model: string | null;
-  internalTable: string | null;
-  internalId: string | null;
-};
-
-/**
- * One typed Odoo operation per command type. A type with no entry here has no
- * confirmed Odoo entry point yet and is refused terminally rather than guessed.
- */
-export async function runOperation(
-  odoo: OdooPort,
-  command: CommandRow,
-  operationRef: string,
-): Promise<OperationResult> {
-  const payload = command.payload as Record<string, unknown>;
-
-  switch (command.commandType) {
-    case "post_supplier_bill": {
-      const partner = await odoo.operations.findPartnerByRef(String(payload.supplierReference));
-      if (!partner) {
-        throw new AppError("NOT_FOUND", {
-          message: "fournisseur absent d'Odoo",
-          details: { supplierReference: payload.supplierReference },
-        });
-      }
-      const created = await odoo.operations.createDraftSupplierBill({
-        partnerId: partner.id,
-        invoiceDate: String(payload.issuedOn),
-        ref: String(payload.supplierReference),
-        lines: [
-          {
-            name: String(payload.supplierReference),
-            priceUnit: Number(payload.totalExclTax),
-          },
-        ],
-        operationRef,
-      });
-      return {
-        externalId: created.id,
-        model: "account.move",
-        internalTable: "expense",
-        internalId: String(payload.expenseId),
-      };
-    }
-
-    case "attach_document_to_odoo": {
-      const created = await odoo.operations.attachDocument({
-        name: String(payload.documentId),
-        base64: String(payload.base64 ?? ""),
-        resModel: String(payload.odooModel),
-        resId: Number(payload.odooRecordId),
-        operationRef,
-      });
-      return {
-        externalId: created.id,
-        model: "ir.attachment",
-        internalTable: "document_version",
-        internalId: String(payload.documentVersionId),
-      };
-    }
-
-    case "propose_reconciliation": {
-      await odoo.operations.proposeReconciliation({
-        statementLineId: Number(payload.bankTransactionId),
-        moveLineIds: [],
-        operationRef,
-      });
-      return { externalId: null, model: null, internalTable: null, internalId: null };
-    }
-
-    default:
-      throw new AppError("RULE_VIOLATION", {
-        message: `aucune opération Odoo typée pour la commande ${command.commandType}`,
-        details: { commandType: command.commandType, reason: "no_typed_operation" },
-      });
-  }
-}
 
 async function loadCommand(tx: Tx, commandId: string): Promise<CommandRow> {
   const rows = await tx
@@ -225,6 +147,7 @@ export async function dispatchEntry(deps: Deps, entry: OutboxRow): Promise<Entry
     if (command.approvalId !== null || command.autonomyLevel === "D") {
       await assertApprovalValid(tx, command.id, command.payloadHash, deps.now());
     }
+    await assertExpectedVersion(tx, command);
     const sent = await transitionCommand(tx, command.id, "authorized", "sent", command.version);
     const attempt = await recordCommandAttempt(tx, {
       organizationId,
@@ -261,7 +184,7 @@ export async function dispatchEntry(deps: Deps, entry: OutboxRow): Promise<Entry
 
   try {
     const result = await withExchangeContext({ organizationId, commandId }, () =>
-      runOperation(odoo, command, operationRef),
+      runOperation(deps, command, operationRef),
     );
     odooBreaker.recordSuccess();
 
@@ -278,6 +201,7 @@ export async function dispatchEntry(deps: Deps, entry: OutboxRow): Promise<Entry
         });
         externalRefId = mapped.id;
       }
+      if (result.apply) await result.apply(tx);
       await finishCommandAttempt(tx, attemptId, "success");
       await transitionCommand(tx, command.id, "sent", "confirmed", command.version, {
         ...(externalRefId ? { externalRefId } : {}),

@@ -57,13 +57,20 @@
       "uploading": "envoi en cours…",
       "synced": "synchronisé",
       "failed": "échec de l’envoi",
+      "blocked": "envoi suspendu après plusieurs échecs",
       "retry": "Réessayer",
-      "pendingWarning": "{count} élément(s) pas encore synchronisé(s) : restez sur la page jusqu’à la fin de l’envoi.",
-      "memoryOnly": "La file d’attente est en mémoire : un rechargement de la page perd les dépôts non synchronisés."
+      "retryOf": "Réessayer l’envoi de {filename}",
+      "removeOf": "Retirer {filename} de la file",
+      "attempts": "{count} tentatives",
+      "pendingWarning": "{count} dépôt(s) en attente : ils sont conservés sur cet appareil et repartent au retour du réseau, même si vous fermez l’onglet.",
+      "memoryOnly": "Stockage local indisponible (navigation privée ou espace refusé) : la file reste en mémoire et un rechargement de la page la perdrait.",
+      "offline": "Hors ligne : l’envoi reprendra dès le retour du réseau.",
+      "onDevice": "{count} dépôt(s) en attente sur cet appareil : reconnectez-vous pour les envoyer."
     },
     "errors": {
       "tooLarge": "Fichier trop volumineux (50 Mo maximum).",
-      "unsupported": "Format non pris en charge : PDF ou image uniquement."
+      "unsupported": "Format non pris en charge : PDF ou image uniquement.",
+      "noOrganization": "Organisation inconnue : reconnectez-vous avant de déposer un document."
     }
   }
 }

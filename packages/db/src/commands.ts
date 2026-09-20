@@ -3,6 +3,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { hashPayload } from "./canonical";
 import type { Tx } from "./client";
 import { approval, command, commandAttempt, outboxEntry } from "./generated/schema";
+import { commandTargetOf, type VersionedKind, versionedTableByKind } from "./object-ref";
 
 export type CommandRow = typeof command.$inferSelect;
 export type ApprovalRow = typeof approval.$inferSelect;
@@ -175,6 +176,44 @@ export async function assertApprovalValid(
     });
   }
   return row;
+}
+
+/** Current optimistic version of the row a command targets, or null when it is gone. */
+export async function currentVersionOf(
+  tx: Tx,
+  target: { kind: VersionedKind; id: string },
+): Promise<number | null> {
+  const table = versionedTableByKind[target.kind];
+  const rows = await tx
+    .select({ version: table.version })
+    .from(table)
+    .where(eq(table.id, target.id))
+    .limit(1);
+  return rows[0]?.version ?? null;
+}
+
+/**
+ * SYN-01: the authorization was given on a state of the world. Between then and
+ * the external call the row may have moved, so the version is re-read here and
+ * not taken from the queued payload. A command that declares no expected version
+ * has nothing to compare against and is left alone.
+ */
+export async function assertExpectedVersion(tx: Tx, row: CommandRow): Promise<void> {
+  if (row.expectedVersion === null) return;
+  const target = commandTargetOf(row.payload);
+  if (!target) return;
+  const current = await currentVersionOf(tx, target);
+  if (current === row.expectedVersion) return;
+  throw new AppError("VERSION_CONFLICT", {
+    message: `${target.kind} modifié depuis l'autorisation de la commande`,
+    details: {
+      commandId: row.id,
+      kind: target.kind,
+      objectId: target.id,
+      expectedVersion: row.expectedVersion,
+      actualVersion: current,
+    },
+  });
 }
 
 export async function revokeApproval(

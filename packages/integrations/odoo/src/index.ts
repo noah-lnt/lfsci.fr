@@ -49,25 +49,37 @@ export {
 export type { ExchangeRecord, ExchangeRecorder } from "./exchange";
 export { createMemoryRecorder, noopRecorder, redactExchange } from "./exchange";
 export type {
+  AnalyticTarget,
   AttachDocumentInput,
+  CcaEntryKind,
   CreateCustomerInvoiceInput,
   CreateSupplierBillInput,
+  LockKind,
   Many2one,
+  OdooAccountCodes,
   OdooAccountMove,
+  OdooBankJournalBalance,
   OdooBankStatementLine,
   OdooJournal,
+  OdooLockDates,
   OdooOperations,
   OdooOperationsOptions,
   OdooPage,
   OdooPartner,
   OperationRefMatch,
+  PostCcaEntryInput,
+  PostedMove,
+  PostRentInvoiceInput,
   ProposeReconciliationInput,
   SupplierBillLine,
 } from "./operations";
 export {
+  ccaIncreases,
   createOdooOperations,
+  DEFAULT_ACCOUNT_CODES,
   DEFAULT_OPERATION_REF_FIELD,
   many2oneId,
+  moneyToWire,
   newOperationRef,
   OPERATION_REF_PREFIX,
 } from "./operations";

@@ -3,6 +3,8 @@ import { z } from "zod";
 import {
   AiProvider,
   type AiProviderClient,
+  type EmbedInput,
+  type EmbedResult,
   type ExtractStructuredInput,
   type ExtractStructuredResult,
   type RunToolLoopInput,
@@ -19,8 +21,12 @@ import {
 export const DEFAULT_MODEL = "claude-opus-5";
 export const DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434";
 /** The owner's box runs a 32 GB RTX 5090: both defaults fit in VRAM at Q4. */
-export const DEFAULT_OLLAMA_MODEL_TEXT = "qwen3:32b";
+export const DEFAULT_OLLAMA_MODEL_TEXT = "qwen3.5:27b";
 export const DEFAULT_OLLAMA_MODEL_VISION = "qwen3.5:27b";
+/** Multilingual and 1024-dimensional, which is what `embedding.vector` stores (D-11). */
+export const DEFAULT_OLLAMA_MODEL_EMBED = "bge-m3:567m";
+/** Fixed by migration 0001 (`vector(1024)`): another width is a column migration. */
+export const DEFAULT_EMBED_DIMENSIONS = 1024;
 export const DEFAULT_OLLAMA_TIMEOUT_MS = 120_000;
 
 export const aiEnvShape = {
@@ -31,6 +37,8 @@ export const aiEnvShape = {
   OLLAMA_BASE_URL: z.string().trim().min(1).default(DEFAULT_OLLAMA_BASE_URL),
   OLLAMA_MODEL_TEXT: z.string().trim().min(1).default(DEFAULT_OLLAMA_MODEL_TEXT),
   OLLAMA_MODEL_VISION: z.string().trim().min(1).default(DEFAULT_OLLAMA_MODEL_VISION),
+  OLLAMA_MODEL_EMBED: z.string().trim().min(1).default(DEFAULT_OLLAMA_MODEL_EMBED),
+  AI_EMBED_DIMENSIONS: z.coerce.number().int().positive().default(DEFAULT_EMBED_DIMENSIONS),
   OLLAMA_TIMEOUT_MS: z.coerce.number().int().positive().default(DEFAULT_OLLAMA_TIMEOUT_MS),
   OLLAMA_API_KEY: z.string().trim().min(1).optional(),
 };
@@ -46,9 +54,12 @@ export function aiConfigFromEnv(source: NodeJS.ProcessEnv = process.env): AiConf
 export type AiClient = {
   provider: AiProvider;
   modelId: string;
+  embedModelId: string;
+  embedDimensions: number;
   supportsServerSideFallback: boolean;
   extract(input: ExtractStructuredInput): Promise<ExtractStructuredResult>;
   assistant(input: RunToolLoopInput): Promise<RunToolLoopResult>;
+  embed(input: EmbedInput): Promise<EmbedResult>;
   health(): Promise<OllamaHealth | null>;
 };
 
@@ -64,6 +75,8 @@ export function createAiClient(
           baseUrl: config.OLLAMA_BASE_URL,
           modelText: config.OLLAMA_MODEL_TEXT,
           modelVision: config.OLLAMA_MODEL_VISION,
+          modelEmbed: config.OLLAMA_MODEL_EMBED,
+          embedDimensions: config.AI_EMBED_DIMENSIONS,
           timeoutMs: config.OLLAMA_TIMEOUT_MS,
           apiKey: config.OLLAMA_API_KEY,
           fetchImpl,
@@ -81,15 +94,19 @@ export function createAiClient(
   return {
     provider: provider.provider,
     modelId: provider.modelId,
+    embedModelId: config.AI_PROVIDER === "ollama" ? config.OLLAMA_MODEL_EMBED : "",
+    embedDimensions: config.AI_EMBED_DIMENSIONS,
     supportsServerSideFallback: provider.supportsServerSideFallback,
     extract: (extractInput) => provider.extractStructured(extractInput),
     assistant: (loopInput) => provider.runToolLoop(loopInput),
+    embed: (embedInput) => provider.embed(embedInput),
     health: async () =>
       config.AI_PROVIDER === "ollama"
         ? checkOllama({
             baseUrl: config.OLLAMA_BASE_URL,
             modelText: config.OLLAMA_MODEL_TEXT,
             modelVision: config.OLLAMA_MODEL_VISION,
+            modelEmbed: config.OLLAMA_MODEL_EMBED,
             apiKey: config.OLLAMA_API_KEY,
             fetchImpl,
           })

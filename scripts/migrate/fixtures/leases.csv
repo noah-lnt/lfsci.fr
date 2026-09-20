@@ -1,0 +1,8 @@
+Société;Référence du bail;Locataire;Lot;Type de bail;Début;Fin;Loyer hors charges;Provision de charges;Dépôt de garantie;Jour de paiement
+SCI Exemple;BAIL-2024-001;Camille MARTIN;A1;nu;01/03/2024;;700,00;80,00;700,00;5
+SCI Exemple;BAIL-2022-007;Elodie DURAND;B2;meublé;15/09/2022;14/09/2023;550,00;40,00;;1
+SCI Exemple;BAIL-2025-003;Jean Dupont;C3;nu;31/02/2025;;600,00;;;5
+SCI Inconnue;BAIL-2025-004;Jean Dupont;D4;nu;01/01/2025;;600,00;;;5
+SCI Exemple;BAIL-2025-005;Marie Inconnue;E5;nu;01/01/2025;;abc;;;5
+SCI Exemple;BAIL-2025-006;Marie Inconnue;E6;nu;01/01/2025;;600,00;;;5
+SCI Exemple;BAIL-2024-001;Camille Martin;A1;nu;01/03/2024;;700,00;80,00;700,00;5

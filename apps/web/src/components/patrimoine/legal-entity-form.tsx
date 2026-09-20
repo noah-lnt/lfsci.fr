@@ -21,6 +21,12 @@ type Values = {
   eInvoicingChannel: string;
   fiscalYearEndMonth: string;
   fiscalYearEndDay: string;
+  addressLine1: string;
+  addressLine2: string;
+  postalCode: string;
+  city: string;
+  contactEmail: string;
+  contactPhone: string;
   status: string;
 };
 
@@ -59,6 +65,12 @@ export function LegalEntityForm({ entity }: Props) {
     eInvoicingChannel: entity?.eInvoicingChannel ?? "to_qualify",
     fiscalYearEndMonth: entity?.fiscalYearEndMonth?.toString() ?? "12",
     fiscalYearEndDay: entity?.fiscalYearEndDay?.toString() ?? "31",
+    addressLine1: entity?.addressLine1 ?? "",
+    addressLine2: entity?.addressLine2 ?? "",
+    postalCode: entity?.postalCode ?? "",
+    city: entity?.city ?? "",
+    contactEmail: entity?.contactEmail ?? "",
+    contactPhone: entity?.contactPhone ?? "",
     status: entity?.status ?? "active",
   };
 
@@ -170,6 +182,72 @@ export function LegalEntityForm({ entity }: Props) {
             />
           )}
         </form.Field>
+        <form.Field name="addressLine1">
+          {(field) => (
+            <TextField
+              label={t("entity.addressLine1")}
+              value={field.state.value}
+              errors={field.state.meta.errors}
+              onChange={field.handleChange}
+              onBlur={field.handleBlur}
+            />
+          )}
+        </form.Field>
+        <form.Field name="addressLine2">
+          {(field) => (
+            <TextField
+              label={t("entity.addressLine2")}
+              value={field.state.value}
+              errors={field.state.meta.errors}
+              onChange={field.handleChange}
+              onBlur={field.handleBlur}
+            />
+          )}
+        </form.Field>
+        <form.Field name="postalCode">
+          {(field) => (
+            <TextField
+              label={t("entity.postalCode")}
+              value={field.state.value}
+              errors={field.state.meta.errors}
+              onChange={field.handleChange}
+              onBlur={field.handleBlur}
+            />
+          )}
+        </form.Field>
+        <form.Field name="city">
+          {(field) => (
+            <TextField
+              label={t("entity.city")}
+              value={field.state.value}
+              errors={field.state.meta.errors}
+              onChange={field.handleChange}
+              onBlur={field.handleBlur}
+            />
+          )}
+        </form.Field>
+        <form.Field name="contactEmail">
+          {(field) => (
+            <TextField
+              label={t("entity.contactEmail")}
+              value={field.state.value}
+              errors={field.state.meta.errors}
+              onChange={field.handleChange}
+              onBlur={field.handleBlur}
+            />
+          )}
+        </form.Field>
+        <form.Field name="contactPhone">
+          {(field) => (
+            <TextField
+              label={t("entity.contactPhone")}
+              value={field.state.value}
+              errors={field.state.meta.errors}
+              onChange={field.handleChange}
+              onBlur={field.handleBlur}
+            />
+          )}
+        </form.Field>
         {entity ? (
           <>
             <form.Field name="eInvoicingChannel">
@@ -231,6 +309,26 @@ function toCreate(values: Values) {
     ...(numeric(values.fiscalYearEndDay) === undefined
       ? {}
       : { fiscalYearEndDay: numeric(values.fiscalYearEndDay) }),
+    ...addressOf(values),
+  };
+}
+
+function addressOf(values: Values) {
+  return {
+    ...(trimmed(values.addressLine1) === undefined
+      ? {}
+      : { addressLine1: trimmed(values.addressLine1) }),
+    ...(trimmed(values.addressLine2) === undefined
+      ? {}
+      : { addressLine2: trimmed(values.addressLine2) }),
+    ...(trimmed(values.postalCode) === undefined ? {} : { postalCode: trimmed(values.postalCode) }),
+    ...(trimmed(values.city) === undefined ? {} : { city: trimmed(values.city) }),
+    ...(trimmed(values.contactEmail) === undefined
+      ? {}
+      : { contactEmail: trimmed(values.contactEmail) }),
+    ...(trimmed(values.contactPhone) === undefined
+      ? {}
+      : { contactPhone: trimmed(values.contactPhone) }),
   };
 }
 
@@ -243,6 +341,12 @@ function toUpdate(entity: LegalEntity, values: Values) {
     incomeTaxRegime: values.incomeTaxRegime,
     vatStatus: values.vatStatus,
     eInvoicingChannel: values.eInvoicingChannel,
+    addressLine1: trimmed(values.addressLine1) ?? null,
+    addressLine2: trimmed(values.addressLine2) ?? null,
+    postalCode: trimmed(values.postalCode) ?? null,
+    city: trimmed(values.city) ?? null,
+    contactEmail: trimmed(values.contactEmail) ?? null,
+    contactPhone: trimmed(values.contactPhone) ?? null,
     status: values.status,
   };
 }

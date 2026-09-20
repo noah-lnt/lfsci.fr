@@ -8,6 +8,7 @@ import {
   resolveWebhookOrganization,
 } from "@/server/inbox/webhooks";
 import { enqueueJob } from "@/server/queue";
+import { rateLimit, tooManyRequests } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +23,9 @@ export async function POST(request: Request): Promise<Response> {
   const requestId = requestIdFromHeader(request.headers.get(REQUEST_ID_HEADER));
   const answer = (status: number, body: Record<string, unknown>): Response =>
     Response.json({ ...body, requestId }, { status, headers: { [REQUEST_ID_HEADER]: requestId } });
+
+  const throttle = rateLimit("webhook", request);
+  if (!throttle.allowed) return tooManyRequests(throttle, requestId);
 
   const secret = process.env.RESEND_WEBHOOK_SECRET;
   if (!secret) {

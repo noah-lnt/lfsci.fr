@@ -11,9 +11,11 @@ type Props = {
   children: React.ReactNode;
   messages: Record<string, unknown>;
   locale: string;
+  /** next-themes injects an inline anti-flash script; without this the CSP blocks it. */
+  nonce?: string;
 };
 
-export function Providers({ children, messages, locale }: Props) {
+export function Providers({ children, messages, locale, nonce }: Props) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -29,6 +31,7 @@ export function Providers({ children, messages, locale }: Props) {
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
+          {...(nonce ? { nonce } : {})}
         >
           <TooltipProvider delay={200}>
             {children}

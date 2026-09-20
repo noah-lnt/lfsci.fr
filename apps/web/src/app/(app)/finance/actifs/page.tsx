@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { AssetsTable } from "@/components/finance/portfolio-tables";
+import { AssetsTable } from "@/components/finance/assets";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("finance.assets");

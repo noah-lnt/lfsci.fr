@@ -26,12 +26,33 @@ export type FakeOdooOptions = {
   uid?: number;
   doc?: unknown;
   now?: () => number;
+  /** Set false for a bare store: no company, chart, journal or analytic plan. */
+  seedBaseline?: boolean;
 };
 
 export type MethodHandler = (
   kwargs: Record<string, unknown>,
   store: Map<string, FakeRecord[]>,
 ) => unknown;
+
+/** French chart codes and journals measured on the local Odoo 18 (docs/odoo-poc.md). */
+export const BASELINE_ACCOUNTS = [
+  { id: 624, code: "708300", name: "Sundry rentals" },
+  { id: 620, code: "706000", name: "Services supplied" },
+  { id: 628, code: "708800", name: "Other income from ancillary activities" },
+  { id: 140, code: "165100", name: "Deposits" },
+  { id: 300, code: "455100", name: "Partners/associates - Current accounts - Principal" },
+  { id: 330, code: "471000", name: "Suspense accounts" },
+  { id: 282, code: "411100", name: "Customers - Sales of goods or services" },
+  { id: 210, code: "401100", name: "Suppliers - Purchase of goods and services" },
+];
+
+export const BASELINE_JOURNALS = [
+  { id: 8, code: "INV", name: "Customer Invoices", type: "sale" },
+  { id: 9, code: "BILL", name: "Vendor Bills", type: "purchase" },
+  { id: 10, code: "MISC", name: "Miscellaneous Operations", type: "general" },
+  { id: 13, code: "BNK1", name: "Bank", type: "bank", current_statement_balance: 0 },
+];
 
 export type FakeOdoo = {
   readonly baseUrl: string;
@@ -45,6 +66,7 @@ export type FakeOdoo = {
   seed(model: string, records: Record<string, unknown>[]): FakeRecord[];
   records(model: string): FakeRecord[];
   handle(model: string, method: string, handler: MethodHandler): void;
+  setLockDates(patch: Record<string, string | false>): void;
   setDoc(doc: unknown): void;
   expireSession(): void;
   failNext(status: number, payload: unknown): void;
@@ -198,8 +220,75 @@ export function createFakeOdoo(options: FakeOdooOptions = {}): FakeOdoo {
       sequences.set(model, Math.max(sequences.get(model) ?? 0, raw));
     }
     const record: FakeRecord = { write_date: "2026-01-01 00:00:00", ...values, id };
+    if (model === "account.move") {
+      const total = lineAmounts(values.invoice_line_ids ?? values.line_ids);
+      // Odoo takes an id on create and answers a `[id, label]` pair on read.
+      for (const field of ["partner_id", "journal_id", "currency_id", "company_id"]) {
+        const value = record[field];
+        if (typeof value === "number") record[field] = [value, `${field}:${value}`];
+      }
+      record.state ??= "draft";
+      record.name ??= false;
+      record.ref ??= false;
+      record.date ??= values.invoice_date ?? false;
+      record.amount_total ??= total;
+      record.amount_residual ??= total;
+      record.payment_state ??= "not_paid";
+      record.currency_id ??= [1, "EUR"];
+      record.partner_id ??= false;
+      record.journal_id ??= false;
+      record.company_id ??= [1, "SCI Exemple"];
+    }
     rows(model).push(record);
     return record;
+  }
+
+  function seedBaseline(): void {
+    insert("res.company", {
+      id: 1,
+      name: "SCI Exemple",
+      fiscalyear_lock_date: false,
+      tax_lock_date: false,
+      sale_lock_date: false,
+      purchase_lock_date: false,
+      hard_lock_date: false,
+    });
+    for (const account of BASELINE_ACCOUNTS) insert("account.account", { ...account });
+    for (const journal of BASELINE_JOURNALS) insert("account.journal", { ...journal });
+    insert("account.analytic.plan", { id: 1, name: "Project" });
+  }
+
+  function lineAmounts(values: unknown): number {
+    if (!Array.isArray(values)) return 0;
+    let total = 0;
+    for (const triple of values) {
+      if (!Array.isArray(triple) || triple[0] !== 0) continue;
+      const line = (triple[2] ?? {}) as Record<string, unknown>;
+      const quantity = typeof line.quantity === "number" ? line.quantity : 1;
+      const price = typeof line.price_unit === "number" ? line.price_unit : 0;
+      const credit = typeof line.credit === "number" ? line.credit : 0;
+      total += price * quantity + credit;
+    }
+    return Math.round(total * 100) / 100;
+  }
+
+  /**
+   * Mirrors the measured Odoo 18 behaviour: a posting inside a locked period is
+   * not refused, its accounting date is pushed past the lock (docs/odoo-poc.md).
+   */
+  function shiftPastLock(date: string): string {
+    const company = rows("res.company")[0];
+    const locks = ["hard_lock_date", "fiscalyear_lock_date", "sale_lock_date", "purchase_lock_date"]
+      .map((field) => company?.[field])
+      .filter((value): value is string => typeof value === "string");
+    const blocking = locks
+      .filter((lock) => date <= lock)
+      .sort()
+      .at(-1);
+    if (!blocking) return date;
+    const [year = "1970", month = "01"] = blocking.split("-");
+    const lastDay = new Date(Date.UTC(Number(year), Number(month), 0)).getUTCDate();
+    return `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
   }
 
   function json(body: unknown, status = 200): Response {
@@ -212,6 +301,17 @@ export function createFakeOdoo(options: FakeOdooOptions = {}): FakeOdoo {
   function dispatch(model: string, method: string, kwargs: Record<string, unknown>): unknown {
     const handler = handlers.get(`${model}.${method}`);
     if (handler) return handler(kwargs, store);
+
+    if (model === "account.move" && method === "action_post") {
+      const ids = asArray(kwargs.ids);
+      for (const record of rows(model)) {
+        if (!ids.includes(record.id)) continue;
+        record.state = "posted";
+        record.name = record.move_type === "in_invoice" ? `BILL/${record.id}` : `INV/${record.id}`;
+        if (typeof record.date === "string") record.date = shiftPastLock(record.date);
+      }
+      return true;
+    }
 
     switch (method) {
       case "search":
@@ -456,6 +556,8 @@ export function createFakeOdoo(options: FakeOdooOptions = {}): FakeOdoo {
     return json(result);
   }) as typeof globalThis.fetch;
 
+  if (options.seedBaseline !== false) seedBaseline();
+
   return {
     baseUrl,
     apiKey,
@@ -478,6 +580,10 @@ export function createFakeOdoo(options: FakeOdooOptions = {}): FakeOdoo {
     },
     handle(model, method, handler) {
       handlers.set(`${model}.${method}`, handler);
+    },
+    setLockDates(patch) {
+      const company = rows("res.company")[0] ?? insert("res.company", { id: 1, name: "SCI" });
+      Object.assign(company, patch);
     },
     setDoc(value) {
       doc = value;

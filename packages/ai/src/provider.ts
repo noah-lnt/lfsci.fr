@@ -24,6 +24,19 @@ export type ExtractStructuredInput = {
 
 export type ExtractFailureReason = "parse_failed" | "refusal" | "upstream" | "unsupported_input";
 
+export type EmbedInput = { texts: string[]; requestId: string };
+
+export type EmbedFailureReason = "unsupported" | "upstream" | "dimension_mismatch";
+
+/**
+ * `dimension_mismatch` is a refusal, never a repair: `embedding.vector` is
+ * `vector(1024)` in migration 0001, and a truncated or padded vector would sit
+ * in the HNSW index looking valid while ranking against a different space.
+ */
+export type EmbedResult =
+  | { ok: true; vectors: number[][]; modelId: string; dimensions: number; usage: AiUsage }
+  | { ok: false; reason: EmbedFailureReason; code: ErrorCode; detail: string };
+
 export type ExtractStructuredResult =
   | { ok: true; output: unknown; usage: AiUsage; modelId: string }
   | {
@@ -85,6 +98,7 @@ export type AiProviderClient = {
   supportsServerSideFallback: boolean;
   extractStructured(input: ExtractStructuredInput): Promise<ExtractStructuredResult>;
   runToolLoop(input: RunToolLoopInput): Promise<RunToolLoopResult>;
+  embed(input: EmbedInput): Promise<EmbedResult>;
 };
 
 export function jsonSchemaOf(schema: z.ZodType, io: "input" | "output"): Record<string, unknown> {

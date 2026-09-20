@@ -1,0 +1,41 @@
+{
+  "parametres": {
+    "title": "Paramètres",
+    "securite": {
+      "title": "Sécurité",
+      "description": "Double authentification et codes de secours",
+      "account": "Compte",
+      "statusOn": "Double authentification active",
+      "statusOff": "Double authentification inactive",
+      "statusHint": "Un second facteur est exigé à chaque connexion depuis un nouvel appareil.",
+      "enableTitle": "Activer la double authentification",
+      "enableHint": "Saisissez votre mot de passe : il chiffre la clé TOTP et débloque les codes de secours.",
+      "password": "Mot de passe",
+      "enable": "Générer la clé",
+      "scan": "Scannez ce code avec votre application d’authentification",
+      "scanAlt": "Code QR de la clé TOTP",
+      "manualKey": "Ou saisissez cette clé manuellement",
+      "copyKey": "Copier la clé",
+      "copied": "Copié",
+      "verifyTitle": "Confirmer avec un code",
+      "verifyHint": "Entrez les six chiffres affichés par l’application pour terminer l’activation.",
+      "code": "Code à six chiffres",
+      "verify": "Confirmer",
+      "enabled": "Double authentification activée.",
+      "backupTitle": "Codes de secours",
+      "backupHint": "Conservez-les hors de l’application : chacun ne sert qu’une fois et remplace le code TOTP.",
+      "backupPresent": "Des codes de secours ont été générés.",
+      "backupAbsent": "Aucun code de secours généré.",
+      "regenerate": "Régénérer les codes",
+      "regenerated": "Nouveaux codes générés ; les anciens ne fonctionnent plus.",
+      "disableTitle": "Désactiver",
+      "disableHint": "La connexion ne demandera plus qu’un mot de passe.",
+      "disable": "Désactiver la double authentification",
+      "disabled": "Double authentification désactivée.",
+      "passkeyTitle": "Clés d’accès",
+      "passkeyUnavailable": "Les clés d’accès ne sont pas disponibles sur cette version : elles demandent un module supplémentaire, décision en attente.",
+      "invalidCode": "Code refusé. Vérifiez l’heure de votre téléphone et réessayez.",
+      "invalidPassword": "Mot de passe incorrect."
+    }
+  }
+}

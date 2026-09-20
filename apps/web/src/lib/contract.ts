@@ -1,15 +1,24 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
 import { accueilContract } from "./contracts/accueil";
+import { acquisitionsContract } from "./contracts/acquisitions";
 import { assistantContract } from "./contracts/assistant";
+import { assurancesContract } from "./contracts/assurances";
+import { chargesContract } from "./contracts/charges";
 import { commandsContract } from "./contracts/commands";
+import { courteDureeContract } from "./contracts/courte-duree";
 import { documentsContract } from "./contracts/documents";
 import { echeancierContract } from "./contracts/echeancier";
 import { financeContract } from "./contracts/finance";
 import { inboxContract } from "./contracts/inbox";
+import { inspectionsContract } from "./contracts/inspections";
 import { locationsContract } from "./contracts/locations";
 import { opsProcedures } from "./contracts/ops";
+import { parametresContract } from "./contracts/parametres";
 import { patrimoineContract } from "./contracts/patrimoine";
+import { rechercheContract } from "./contracts/recherche";
+import { recouvrementContract } from "./contracts/recouvrement";
+import { revisionsContract } from "./contracts/revisions";
 import { travauxContract } from "./contracts/travaux";
 
 export const ComponentStatus = z.enum(["up", "down", "unknown"]);
@@ -22,6 +31,8 @@ export const ReadyResult = z.object({
     database: ComponentStatus,
     storage: ComponentStatus,
     queue: ComponentStatus,
+    /** The local model: `down` degrades the AI screens, it never makes the app unready. */
+    model: ComponentStatus,
   }),
 });
 export type ReadyResult = z.infer<typeof ReadyResult>;
@@ -70,14 +81,23 @@ export const contract = {
     ...opsProcedures,
   },
   ...accueilContract,
+  ...acquisitionsContract,
   ...assistantContract,
+  ...assurancesContract,
+  ...chargesContract,
   ...commandsContract,
+  ...courteDureeContract,
   ...documentsContract,
   ...echeancierContract,
   ...financeContract,
   ...inboxContract,
+  ...inspectionsContract,
   ...locationsContract,
+  ...parametresContract,
   ...patrimoineContract,
+  ...rechercheContract,
+  ...recouvrementContract,
+  ...revisionsContract,
   ...travauxContract,
 };
 

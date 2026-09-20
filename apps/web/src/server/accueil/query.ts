@@ -1,14 +1,17 @@
 import "server-only";
 import type { Tx } from "@lfsci/db";
+import { certificateState } from "@lfsci/domain";
 import { sql } from "drizzle-orm";
 import type { AmountIndicator, OccupancyIndicator, SituationResult } from "@/lib/contracts/accueil";
 import { tenant } from "../data";
+import { modelStatus } from "../rpc/modules/health";
 import { buildBanner } from "./banner";
 import type {
   CardSource,
   CommandExceptionRow,
   DeadlineCardRow,
   InboxCardRow,
+  InsuranceExceptionRow,
   LateRentTermRow,
   MissingDocumentRow,
   PendingApprovalRow,
@@ -223,16 +226,57 @@ async function missingDocuments(tx: Tx): Promise<MissingDocumentRow[]> {
   }));
 }
 
+async function insuranceExceptions(tx: Tx, today: string): Promise<InsuranceExceptionRow[]> {
+  const found = await rows<{
+    id: string;
+    insurer_name: string;
+    policy_number: string | null;
+    ends_on: string | null;
+    has_certificate: boolean;
+    created_at: string;
+  }>(
+    tx,
+    sql`SELECT p.id, p.insurer_name, p.policy_number, p.ends_on::text AS ends_on,
+               (p.last_certificate_document_id IS NOT NULL) AS has_certificate,
+               to_char(p.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MSOF:00') AS created_at
+          FROM insurance_policy p
+         WHERE p.status IN ('active', 'expiring', 'expired', 'to_verify')
+         ORDER BY p.ends_on NULLS FIRST, p.created_at
+         LIMIT ${MAX_ROWS}`,
+  );
+  return found.flatMap((row) => {
+    const state = certificateState({
+      hasCertificate: row.has_certificate,
+      coverEndsOn: row.ends_on,
+      today,
+    });
+    if (state !== "missing" && state !== "expired") return [];
+    return [
+      {
+        policyId: row.id,
+        label: `Police ${row.policy_number ?? "—"} (${row.insurer_name})`,
+        state,
+        endsOn: row.ends_on,
+        occurredAt: row.created_at,
+      },
+    ];
+  });
+}
+
 export async function loadCardSource(scope: TenantScope): Promise<CardSource> {
-  return tenant(scope, async (tx) => ({
-    today: await today(tx),
-    lateRentTerms: await lateRentTerms(tx),
-    commandExceptions: await commandExceptions(tx),
-    pendingApprovals: await pendingApprovals(tx),
-    deadlines: await dueDeadlines(tx),
-    inboxItems: await openInboxItems(tx),
-    missingDocuments: await missingDocuments(tx),
-  }));
+  return tenant(scope, async (tx) => {
+    const day = await today(tx);
+    return {
+      today: day,
+      lateRentTerms: await lateRentTerms(tx),
+      commandExceptions: await commandExceptions(tx),
+      pendingApprovals: await pendingApprovals(tx),
+      deadlines: await dueDeadlines(tx),
+      inboxItems: await openInboxItems(tx),
+      missingDocuments: await missingDocuments(tx),
+      insuranceExceptions: await insuranceExceptions(tx, day),
+    };
+  });
 }
 
 const NO_AMOUNT: AmountIndicator = { amount: null, currency: "EUR", asOf: null };
@@ -267,6 +311,8 @@ async function occupancy(tx: Tx): Promise<OccupancyIndicator | null> {
 }
 
 export async function loadSituation(scope: TenantScope): Promise<SituationResult> {
+  // Probed outside the transaction: it can reach the network, a transaction must not wait on it.
+  const model = await modelStatus();
   return tenant(scope, async (tx) => {
     const report = await rows<{ occurred_at: string; payload: unknown }>(
       tx,
@@ -277,6 +323,7 @@ export async function loadSituation(scope: TenantScope): Promise<SituationResult
 
     return {
       banner: buildBanner(last ? { occurredAt: last.occurred_at, payload: last.payload } : null),
+      model,
       indicators: {
         occupancy: await occupancy(tx),
         collectedThisMonth: await amount(

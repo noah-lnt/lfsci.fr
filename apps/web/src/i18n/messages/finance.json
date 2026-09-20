@@ -8,7 +8,9 @@
       "loans": "Crédits",
       "cca": "CCA",
       "assets": "Actifs",
-      "banks": "Banques"
+      "banks": "Banques",
+      "charges": "Charges",
+      "acquisitions": "Acquisitions"
     },
     "kpi": {
       "banks": "Banques",
@@ -134,7 +136,15 @@
         "releasedOn": "Date de déblocage",
         "submit": "Créer le crédit et l’échéancier",
         "submitting": "Création…",
-        "created": "Crédit et échéancier créés."
+        "created": "Crédit et échéancier créés.",
+        "insuranceBasis": "Base de l’assurance",
+        "basisInitial": "Capital initial",
+        "basisOutstanding": "Capital restant dû",
+        "deferralMonths": "Différé (mois)",
+        "deferralHint": "Laissé vide, aucun différé n’est appliqué.",
+        "deferralKind": "Type de différé",
+        "deferralPartial": "Partiel (intérêts et assurance payés)",
+        "deferralTotal": "Total (intérêts capitalisés)"
       },
       "schedule": {
         "title": "Échéancier",
@@ -154,6 +164,70 @@
         "sumOk": "La somme des capitaux amortis égale le capital emprunté.",
         "sumKo": "La somme des capitaux amortis diffère du capital emprunté.",
         "empty": "Aucune échéance."
+      },
+      "summary": {
+        "title": "Situation du crédit",
+        "outstanding": "Capital restant dû",
+        "sourceOdoo": "solde comptable Odoo",
+        "sourceProjection": "prévisionnel, lu sur l’échéancier",
+        "capitalRepaid": "Capital remboursé",
+        "interestPaid": "Intérêts payés",
+        "insurancePaid": "Assurance payée",
+        "installments": "{paid} échéance(s) échue(s), {left} à venir",
+        "next": "Prochaine échéance le",
+        "releasedOn": "Débloqué le",
+        "deferred": "{count} échéance(s) en différé",
+        "basisMismatch": "Règle enregistrée pour ce crédit : {stored}. Les primes stockées suivent une autre règle ; vérifiez l’échéancier avec la banque."
+      },
+      "insuranceBasis": {
+        "initial_principal": "Assurance calculée sur le capital initial",
+        "outstanding_principal": "Assurance calculée sur le capital restant dû",
+        "none": "Aucune assurance sur cet échéancier",
+        "unknown": "Base de l’assurance non déterminable sur cet échéancier"
+      },
+      "versions": {
+        "title": "Versions de l’échéancier",
+        "description": "Une renégociation ne réécrit pas l’échéancier : elle en ajoute une version.",
+        "sequence": "N°",
+        "reason": "Motif",
+        "effectiveFrom": "Effet au",
+        "source": "Source",
+        "installments": "Échéances",
+        "status": "Statut",
+        "reasons": {
+          "initial": "Initial",
+          "renegotiation": "Renégociation",
+          "rate_change": "Changement de taux",
+          "early_repayment": "Remboursement anticipé",
+          "modulation": "Modulation",
+          "correction": "Correction"
+        },
+        "sources": {
+          "lender_document": "Document du prêteur",
+          "manual": "Saisie",
+          "computed": "Calculé",
+          "import": "Import"
+        },
+        "statuses": {
+          "draft": "Brouillon",
+          "active": "Actif",
+          "superseded": "Remplacé"
+        }
+      },
+      "properties": {
+        "title": "Biens financés",
+        "description": "Le crédit nomme les biens qu’il finance ; la quote-part est facultative.",
+        "target": "Immeuble ou lot",
+        "share": "Quote-part (%)",
+        "add": "Rattacher",
+        "remove": "Détacher",
+        "empty": "Aucun bien rattaché à ce crédit."
+      },
+      "edit": {
+        "title": "Modifier le crédit",
+        "description": "Le taux et le prêteur se corrigent ici ; l’échéancier déjà enregistré n’est pas reconstruit.",
+        "status": "Statut",
+        "save": "Enregistrer"
       }
     },
     "cca": {
@@ -204,10 +278,64 @@
         "depreciable": "Base amortissable",
         "accumulated": "Amortissements",
         "nbv": "VNC",
-        "status": "Statut"
+        "status": "Statut",
+        "duration": "Durée"
       },
       "landNote": "Le terrain n’est jamais amorti ; aucune proportion terrain/construction n’est imposée.",
-      "computedOn": "VNC calculée au"
+      "computedOn": "VNC calculée au",
+      "new": "Nouvelle immobilisation",
+      "years": "ans",
+      "durationDefault": "durée par défaut",
+      "defaultWarning": "{count, plural, one {# immobilisation est amortie sur une durée par défaut} other {# immobilisations sont amorties sur une durée par défaut}} : saisissez la durée retenue pour que la VNC soit la vôtre.",
+      "form": {
+        "title": "Enregistrer une immobilisation",
+        "description": "La valeur du terrain se saisit ici, actif par actif : aucune proportion terrain/construction n’est appliquée d’office.",
+        "legalEntity": "SCI",
+        "building": "Immeuble",
+        "label": "Libellé",
+        "grossValue": "Valeur brute",
+        "landValue": "Valeur du terrain",
+        "landHint": "Le terrain n’est jamais amorti (IMM-02).",
+        "commissionedOn": "Mise en service",
+        "durationYears": "Durée (années)",
+        "durationHint": "Laissée vide, la durée par défaut s’applique et l’écran le signale.",
+        "submit": "Créer l’immobilisation",
+        "submitting": "Création…"
+      },
+      "components": {
+        "label": "Composant",
+        "gross": "Valeur brute",
+        "duration": "Durée (années)",
+        "commissionedOn": "Mise en service",
+        "nature": "Nature",
+        "depreciable": "Amortissable",
+        "notDepreciable": "Non amortissable (terrain)",
+        "add": "Ajouter le composant",
+        "edit": "Modifier",
+        "remove": "Retirer",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "default": "par défaut"
+      },
+      "detail": {
+        "title": "Immobilisation",
+        "components": "Composants",
+        "componentsHint": "Chaque composant porte sa propre durée ; le registre additionne les composants, il ne déduit jamais une quote-part.",
+        "noComponents": "Aucun composant saisi : l’actif est lu comme terrain plus construction.",
+        "years": "Dotations par exercice",
+        "noYears": "Aucune dotation : il manque une date de mise en service ou une durée.",
+        "year": "Exercice",
+        "charge": "Dotation",
+        "cumulative": "Cumul",
+        "actions": "Actions",
+        "edit": "Modifier l’immobilisation",
+        "save": "Enregistrer",
+        "defaultApplied": "une durée par défaut a été appliquée",
+        "disposeHint": "Une sortie d’actif se date et se motive ; rien n’est supprimé.",
+        "disposedOn": "Date de sortie",
+        "reason": "Motif",
+        "dispose": "Sortir l’actif"
+      }
     },
     "banks": {
       "title": "Comptes bancaires",
@@ -220,9 +348,83 @@
         "balance": "Solde",
         "asOf": "À la date du",
         "source": "Source",
-        "feed": "Dernier flux"
+        "feed": "Dernier flux",
+        "actions": "Actions"
       },
-      "note": "Une égalité de soldes ne prouve pas que tous les mouvements sont correctement affectés."
+      "note": "Le solde n’est pas stocké : il est reconstitué. Une égalité de soldes ne prouve pas que tous les mouvements sont correctement affectés.",
+      "total": "Solde consolidé",
+      "accounts": "Comptes",
+      "unreconciled": "Lignes à rapprocher",
+      "asOf": "À la date du",
+      "new": "Nouveau compte",
+      "edit": "Modifier",
+      "basis": {
+        "ledger": "solde comptable (Odoo)",
+        "computed": "solde calculé sur les mouvements",
+        "opening_only": "solde d’ouverture, aucun mouvement connu"
+      },
+      "purpose": {
+        "operating": "Courant",
+        "deposit": "Dépôts de garantie",
+        "transit": "Transit",
+        "savings": "Épargne",
+        "loan": "Prêt"
+      },
+      "form": {
+        "legalEntity": "SCI",
+        "label": "Libellé",
+        "bank": "Banque",
+        "purpose": "Usage",
+        "openingBalance": "Solde d’ouverture",
+        "openingHint": "Le solde d’ouverture est arrêté à la clôture de la date indiquée.",
+        "openingBalanceOn": "Date du solde d’ouverture",
+        "create": "Créer le compte",
+        "save": "Enregistrer",
+        "cancel": "Annuler"
+      },
+      "transfers": {
+        "title": "Virements internes",
+        "description": "Un virement entre nos comptes ne crée ni produit ni charge ; tant qu’il n’est pas reçu, il est en transit.",
+        "source": "Compte débité",
+        "target": "Compte crédité",
+        "amount": "Montant",
+        "initiatedOn": "Date d’émission",
+        "status": "Statut",
+        "actions": "Actions",
+        "create": "Enregistrer le virement",
+        "settle": "Marquer reçu",
+        "cancel": "Annuler",
+        "empty": "Aucun virement interne.",
+        "hint": "Le compte crédité doit être différent du compte débité."
+      },
+      "transferStatus": {
+        "expected": "Attendu",
+        "in_transit": "En transit",
+        "settled": "Reçu",
+        "mismatch": "Écart",
+        "cancelled": "Annulé"
+      },
+      "transactions": {
+        "title": "Mouvements bancaires",
+        "filter": "Compte",
+        "allAccounts": "Tous les comptes",
+        "bookedOn": "Date d’opération",
+        "valueOn": "Date de valeur",
+        "label": "Libellé",
+        "counterparty": "Contrepartie",
+        "amount": "Montant",
+        "origin": "Origine",
+        "reconciliation": "Rapprochement",
+        "ledger": "Grand livre",
+        "imported": "Import",
+        "empty": "Aucun mouvement.",
+        "status": {
+          "unreconciled": "À rapprocher",
+          "partially_reconciled": "Partiel",
+          "reconciled": "Rapproché",
+          "excluded": "Exclu"
+        }
+      }
     },
     "status": {
       "captured": "Capturée",
