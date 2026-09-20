@@ -1,0 +1,58 @@
+{
+  "name": "lfsci",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-first property and rental management SaaS on top of Odoo Online",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "packages/integrations/*"
+  ],
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=11.0.0"
+  },
+  "packageManager": "npm@11.19.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:db": "vitest run --project db",
+    "lint": "biome check . && eslint .",
+    "format": "biome format --write .",
+    "check": "biome check . && eslint . && turbo run typecheck && vitest run",
+    "e2e": "playwright test",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d --wait",
+    "db:down": "docker compose -f docker-compose.dev.yml down",
+    "db:reset": "docker compose -f docker-compose.dev.yml down -v && npm run db:up && npm run db:migrate",
+    "db:migrate": "npm run migrate -w @lfsci/db",
+    "db:seed": "npm run seed -w @lfsci/db",
+    "db:pull": "npm run pull -w @lfsci/db",
+    "db:studio": "npm run studio -w @lfsci/db",
+    "spec:docx": "uv run --with python-docx docs/build_spec.py"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.14",
+    "@playwright/test": "1.63.0",
+    "@axe-core/playwright": "4.13.0",
+    "@types/node": "24.13.6",
+    "@vitest/coverage-v8": "5.0.1",
+    "eslint": "9.39.5",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "turbo": "2.11.2",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.1"
+  },
+  "allowScripts": {
+    "esbuild@0.18.20": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "@swc/core@1.16.2": true,
+    "sharp@0.35.4": true,
+    "@sentry/cli@2.58.6": true,
+    "@parcel/watcher@2.6.0": true
+  }
+}

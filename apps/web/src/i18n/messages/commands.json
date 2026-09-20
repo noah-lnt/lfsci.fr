@@ -1,0 +1,63 @@
+{
+  "validations": {
+    "title": "Validations",
+    "description": "Ce qui attend votre accord avant de partir vers Odoo",
+    "empty": "Aucune validation en attente",
+    "emptyHint": "Les commandes de niveau C et D apparaîtront ici avec leurs pièces et leur effet attendu.",
+    "pending": "En attente",
+    "history": "Décisions récentes",
+    "level": "Niveau",
+    "amount": "Montant",
+    "pieces": "Pièces",
+    "effect": "Effet attendu",
+    "approve": "Valider",
+    "refuse": "Refuser",
+    "reason": "Motif du refus",
+    "reasonPlaceholder": "Pourquoi cette commande est-elle refusée ?",
+    "approved": "Commande autorisée ; elle part vers la file d’envoi.",
+    "refused": "Commande annulée avec son motif.",
+    "decision": {
+      "approved": "Validée",
+      "refused": "Refusée"
+    },
+    "decidedAt": "Décidée le",
+    "expiresAt": "Expire le",
+    "expiryNotice": "Une validation est liée à l’empreinte exacte du contenu et expire après 24 heures."
+  },
+  "ops": {
+    "searchTitle": "Tracer une référence",
+    "searchHint": "Collez l’identifiant de corrélation renvoyé par une erreur : commandes, tentatives, échanges et travaux liés apparaissent ici.",
+    "searchLabel": "Référence de corrélation",
+    "searchAction": "Rechercher",
+    "commands": "Commandes",
+    "attempts": "Tentatives",
+    "exchanges": "Échanges d’intégration",
+    "jobs": "Travaux",
+    "queues": "Files d’attente",
+    "outbox": "Outbox",
+    "integrations": "Connecteurs",
+    "queueUnavailable": "Les tables pg-boss ne sont pas installées : aucune information de file n’a pu être lue.",
+    "noResult": "Aucune trace pour cette référence.",
+    "columns": {
+      "id": "Identifiant",
+      "state": "État",
+      "kind": "Type",
+      "createdAt": "Créée le",
+      "error": "Erreur",
+      "step": "Étape",
+      "outcome": "Résultat",
+      "httpStatus": "HTTP",
+      "operation": "Opération",
+      "integration": "Intégration",
+      "direction": "Sens",
+      "duration": "Durée",
+      "count": "Nombre",
+      "name": "Nom",
+      "health": "Santé",
+      "lastSuccess": "Dernier succès",
+      "lastError": "Dernière erreur",
+      "failures": "Échecs consécutifs",
+      "cursor": "Curseur"
+    }
+  }
+}

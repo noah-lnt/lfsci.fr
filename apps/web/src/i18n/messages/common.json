@@ -1,0 +1,130 @@
+{
+  "app": {
+    "name": "lfsci",
+    "tagline": "Gestion patrimoniale et locative"
+  },
+  "common": {
+    "empty": "—",
+    "reference": "Référence",
+    "copy": "Copier la référence",
+    "copied": "Référence copiée",
+    "loading": "Chargement…",
+    "retry": "Réessayer",
+    "search": "Rechercher",
+    "close": "Fermer",
+    "openMenu": "Ouvrir le menu",
+    "collapseSidebar": "Réduire le menu",
+    "expandSidebar": "Déployer le menu",
+    "theme": "Thème",
+    "themeLight": "Clair",
+    "themeDark": "Sombre",
+    "themeSystem": "Système",
+    "account": "Compte",
+    "signOut": "Se déconnecter",
+    "assistant": "Assistant",
+    "assistantDescription": "Posez une question sur vos lots, vos baux, vos dépenses ou vos documents ; toute action proposée passe par une validation.",
+    "capture": "Capturer un document"
+  },
+  "nav": {
+    "sections": { "main": "Pilotage", "admin": "Exploitation" },
+    "home": "Accueil",
+    "patrimoine": "Patrimoine",
+    "locations": "Locations",
+    "finance": "Finance",
+    "travaux": "Travaux",
+    "inbox": "Inbox",
+    "echeancier": "Échéancier",
+    "documents": "Documents",
+    "ops": "Ops"
+  },
+  "auth": {
+    "signInTitle": "Connexion",
+    "signInDescription": "Accédez à la gestion de vos SCI.",
+    "signUpTitle": "Créer le premier compte",
+    "signUpDescription": "Le premier compte crée l’organisation et en devient l’administrateur.",
+    "email": "Adresse e-mail",
+    "password": "Mot de passe",
+    "passwordHint": "12 caractères minimum.",
+    "fullName": "Nom complet",
+    "organizationName": "Nom de l’organisation",
+    "organizationSlug": "Identifiant court",
+    "organizationSlugHint": "Lettres minuscules et tirets ; il sert de code d’organisation.",
+    "signIn": "Se connecter",
+    "signUp": "Créer le compte et l’organisation",
+    "toSignUp": "Première installation ? Créer le compte administrateur",
+    "toSignIn": "J’ai déjà un compte",
+    "signingOut": "Déconnexion en cours…",
+    "signedOut": "Vous êtes déconnecté.",
+    "backToSignIn": "Retour à la connexion",
+    "invalidCredentials": "Adresse e-mail ou mot de passe incorrect."
+  },
+  "pages": {
+    "home": {
+      "title": "Accueil",
+      "description": "Ce qui nécessite mon intervention",
+      "empty": "Aucune carte d’intervention pour l’instant. Cet écran listera les situations à traiter : loyer en retard, contrôle nocturne en échec, document à rattacher, échéance proche — avec le motif, ce qui bloque et l’action proposée."
+    },
+    "patrimoine": {
+      "title": "Patrimoine",
+      "description": "SCI, immeubles, lots et périodes d’usage",
+      "empty": "Aucun bien enregistré. Cet écran listera les SCI, leurs immeubles, leurs lots et les périodes d’usage, avec la chronologie de chaque objet."
+    },
+    "locations": {
+      "title": "Locations",
+      "description": "Baux, locataires, loyers et dépôts",
+      "empty": "Aucun bail enregistré. Cet écran listera les baux en cours et passés, les locataires, les termes de loyer, les quittances et les dépôts de garantie."
+    },
+    "finance": {
+      "title": "Finance",
+      "description": "Encaissements, dépenses, crédits et comptes courants",
+      "empty": "Aucun mouvement. Cet écran présentera les encaissements et leurs affectations, les dépenses, les échéanciers de crédit et les comptes courants d’associés, rapprochés avec Odoo."
+    },
+    "travaux": {
+      "title": "Travaux",
+      "description": "Chantiers, devis, équipements et sinistres",
+      "empty": "Aucun chantier. Cet écran suivra les projets de travaux, les devis et factures associés, les équipements, la maintenance et les sinistres."
+    },
+    "inbox": {
+      "title": "Inbox",
+      "description": "Courriels, SMS et documents captés",
+      "empty": "Aucun élément reçu. Cet écran regroupera les courriels, les SMS et les documents captés, avec les champs extraits, les rattachements proposés et le motif d’incertitude."
+    },
+    "echeancier": {
+      "title": "Échéancier",
+      "description": "Ce qui arrive et ce qui est en retard",
+      "empty": "Aucune échéance. Cet écran listera les loyers, les révisions d’indice, les échéances de crédit, les assurances et les obligations réglementaires à venir."
+    },
+    "documents": {
+      "title": "Documents",
+      "description": "Pièces, baux signés et justificatifs",
+      "empty": "Aucun document. Cet écran listera les pièces déposées ou captées, leur rattachement, leur texte extrait et la visionneuse isolée."
+    },
+    "ops": {
+      "title": "Ops",
+      "description": "Tableau d’exploitation — cherchez par référence avant tout log",
+      "searchLabel": "Référence de corrélation",
+      "searchPlaceholder": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+      "searchAction": "Rechercher",
+      "echoTitle": "Aller-retour de corrélation",
+      "echoHint": "La référence envoyée par le navigateur doit revenir identique.",
+      "sentId": "Référence envoyée",
+      "returnedId": "Référence renvoyée",
+      "receivedAt": "Reçue à",
+      "commands": "Commandes",
+      "attempts": "Tentatives",
+      "jobs": "Travaux",
+      "columns": {
+        "id": "Identifiant",
+        "state": "État",
+        "code": "Code",
+        "kind": "Type",
+        "createdAt": "Créée le",
+        "error": "Erreur"
+      },
+      "pending": "Les requêtes réelles arrivent avec le socle base de données."
+    }
+  },
+  "errors": {
+    "title": "Une erreur est survenue"
+  }
+}

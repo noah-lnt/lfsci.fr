@@ -4,11 +4,13 @@ Collected during the autonomous build of 2026-09-20. Each item names what was as
 
 ## 1. Blocking before the first real run
 
-1. **Odoo Online plan (D-01).** The external API needs the Custom plan. Is the subscription Custom, and is the API enabled? Without it Phase 0 cannot start.
-2. **Rent terms have no Odoo entry point yet.** The connector exposes supplier bills (`in_invoice`), attachments and a reconciliation placeholder. A rent term is a customer invoice (`out_invoice`), and the dispatcher refuses `prepare_rent_accounting` terminally with `no_typed_operation` rather than guess. Phase 0 on the neutralised duplicate must confirm the model, method and fields; then the operation is added.
+1. **Odoo Online plan (D-01) — decided 2026-09-20.** The owner keeps Odoo Online for its bank reconciliation; self-hosted Community was considered and rejected. The external API is a Custom-plan feature: €37.40 per user per month billed monthly, €29.90 billed yearly on odoo.com/pricing-plan as of 2026-09-20. Remaining action: subscribe to Custom, then create the neutralised duplicate and the bot API key for Phase 0.
+1b. **Phase 0 on a local Odoo 18 Community + OCA, run 2026-09-20 (`docs/odoo-poc.md`).** 9 of 10 steps pass through the real connector: tenant, posted rent invoice (`out_invoice`, accounts 708300 and 706000), PDF attachment, CAMT.053 import, full and partial reconciliation via the OCA widget's server methods, lost-response recovery, 137 reads/s. Finding to act on whatever the hosting: **Odoo does not refuse a posting in a locked period, it silently moves the accounting date** past the lock; the SaaS must read the company lock dates and refuse before calling (spec WF-12). Open: which groups the bot user gets (it could not set lock dates, trust a bank account or read `ir.model`), who creates the `x_lfsci_ref` fields on Online (Studio), and whether Ponto at about €10/month beats one manual CAMT download a month. Self-hosting's real cost is the yearly OpenUpgrade of Odoo plus 312 OCA modules, with no 19.0 branch yet for the two reconciliation repositories.
+2. **Rent terms have no Odoo entry point yet.** The connector exposes supplier bills (`in_invoice`), attachments and a reconciliation placeholder. The connector now has `createDraftCustomerInvoice` (proven on Odoo 18 Community), but the dispatcher still refuses `prepare_rent_accounting` until the Odoo Online 19 duplicate confirms the same fields and the accounts of your chart; then the mapping is wired.
 3. **Bot user and `/doc` snapshot.** Create a bot user with minimal rights on the duplicate, generate an API key, and export `/doc`; the connector's capability snapshot comes from it.
 4. **Stable reference field in Odoo.** A Studio text field on `account.move` (default name `x_lfsci_ref`, indexed, not unique) carries the operation reference used to reconcile lost responses. Confirm the name.
-5. **LLM residency (D-04).** Default is Claude via Bedrock `eu-west-3`; this forfeits server-side refusal fallbacks, Batches and the Files API. First-party Anthropic API with a DPA is one env flip (`AI_PROVIDER=anthropic`) and cheaper. Which one?
+5. **LLM (D-04) — decided 2026-09-20, implemented.** A local Ollama instance on the owner's GPU box is the default provider (`AI_PROVIDER=ollama`); residency is solved by keeping data on the owner's hardware, and the Anthropic/Bedrock path stays selectable. Open: (a) **the models** — the defaults are `qwen3:32b` for text and `qwen3.5:27b` for vision, both Q4 in the 32 GB card, but neither has been run on real documents; confirm or replace, and `ollama pull` them on the box; (b) **the base URL reachable from the Debian server** (`OLLAMA_BASE_URL`), plus whether it crosses the public internet — if so it needs TLS and `OLLAMA_API_KEY` on a proxy in front, since Ollama itself has no authentication; (c) **the quality baseline** on real receipts before any automation (spec IA-04): a first pass on a 3B model returned correct supplier, ISO date, totals and lines but invented `evidence.bbox` coordinates, so the evaluation set has to score evidence as well as values; (d) **PDF handling** — Ollama reads page images, not PDF bytes, so `document.analyze` has to rasterise pages (it currently forwards `pdfBase64`) or every PDF returns `unsupported_input` on the local route; (e) whether the GPU box also hosts the vision model at the same time or whether Ollama should swap models between calls (a 32 GB card holds one of the two defaults at a time).
+
 6. **Object storage (D-03).** Scaleway `fr-par` bucket credentials, or Garage on the box. Without credentials the dev build uses a local driver.
 7. **Palette (D-08).** Raspberry `#B11649` is implemented from your workspace colour; the house violet is the alternative. Confirm before more screens are styled.
 
@@ -20,9 +22,8 @@ Collected during the autonomous build of 2026-09-20. Each item names what was as
 - Mistral (OCR, EU endpoint) API key.
 - Gladia API key. Note: Gladia documents no region selector on its v2 endpoint; French-infrastructure processing is a contractual statement to check, not an API setting.
 - Resend: domain with the `inbound` MX record and a webhook secret.
-- smsmode: API key, an SDA long-code number for replies, webhook secret. The key header, sender field and inbound payload are marked "to confirm" in code.
 - INSEE `portail-api.insee.fr` developer account (IRL series `001515333`); the auth scheme is unverified.
-- GitHub repository name and GlitchTip DSN.
+- Error reporting is optional: with `SENTRY_DSN` empty nothing is sent anywhere and errors stay in the logs and the ops screen. Decided 2026-09-20: not needed for now. The repository is `noah-lnt/lfsci.fr`.
 
 ## 3. Decisions per area
 
@@ -65,7 +66,7 @@ Collected during the autonomous build of 2026-09-20. Each item names what was as
 
 ## 4. Infrastructure to measure or decide
 
-37. **`local-nolan-sarl` sizing.** RAM, CPU flags (`grep -c avx /proc/cpuinfo`), disk. The prod compose budgets about 1.7 GB across five containers.
+37. **Production server — decided 2026-09-20: the owner's dedicated Debian server.** Still to measure there: RAM, CPU flags (`grep -c avx /proc/cpuinfo`), disk, whether a Traefik with the `web` network, `websecure` entrypoint and `letsencrypt` resolver exists (the prod compose assumes it) or must be added, and whether the Ollama box is reachable from it. The prod compose budgets about 1.7 GB across five containers.
 38. **Typst on that CPU.** Not documented either way; run the worker image once and render a quittance.
 39. **Production database role.** The compose runs the app as the image superuser, which bypasses RLS; hardening means a non-superuser app role plus a `BYPASSRLS` maintenance role for cross-organization jobs.
 40. **Hostname (D-09).** `app.lfsci.fr` assumed; DNS record and Traefik router move together.

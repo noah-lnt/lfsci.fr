@@ -1,0 +1,31 @@
+{
+  "name": "@lfsci/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./tenant": "./src/tenant.ts",
+    "./schema": "./src/generated/schema.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "migrate": "tsx --env-file-if-exists=../../.env src/cli/migrate.ts",
+    "seed": "tsx --env-file-if-exists=../../.env src/cli/seed.ts",
+    "pull": "drizzle-kit pull && node scripts/postpull.mjs",
+    "studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@lfsci/contracts": "*",
+    "@lfsci/kernel": "*",
+    "drizzle-orm": "0.45.2",
+    "postgres": "3.4.9",
+    "uuid": "14.0.2"
+  },
+  "devDependencies": {
+    "drizzle-kit": "0.31.10",
+    "tsx": "4.23.13",
+    "typescript": "6.0.3"
+  }
+}

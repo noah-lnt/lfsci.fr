@@ -1,0 +1,13 @@
+export * as actionRequired from "./actionRequired";
+export * as approvals from "./approvals";
+export * as assistant from "./assistant";
+export * as commands from "./commands";
+export * as documents from "./documents";
+export * as echeancier from "./echeancier";
+export * as finance from "./finance";
+export * as inbox from "./inbox";
+export * as locations from "./locations";
+export * as ops from "./ops";
+export * as patrimoine from "./patrimoine";
+export * as personnes from "./personnes";
+export * as travaux from "./travaux";

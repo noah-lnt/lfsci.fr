@@ -1,0 +1,22 @@
+{
+  "name": "@lfsci/ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/bedrock-sdk": "0.33.7",
+    "@anthropic-ai/sdk": "0.127.0",
+    "@lfsci/contracts": "*",
+    "@lfsci/kernel": "*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}

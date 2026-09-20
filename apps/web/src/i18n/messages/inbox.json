@@ -1,0 +1,43 @@
+{
+  "inbox": {
+    "title": "Inbox",
+    "description": "Source, original, champs extraits, rattachement proposé",
+    "empty": "Inbox vide",
+    "emptyHint": "Aucun élément à trier. Les courriels transférés, les SMS collés et les documents captés arrivent ici.",
+    "listTitle": "À trier",
+    "openCount": "{count} élément(s) ouverts",
+    "detailTitle": "Détail",
+    "noSelection": "Choisissez un élément dans la liste pour voir son original et ses champs extraits.",
+    "original": "Original",
+    "openDocument": "Ouvrir le document",
+    "extracted": "Champs extraits",
+    "noFields": "Aucun champ extrait pour l’instant.",
+    "uncertainty": "Motif d’incertitude",
+    "proposed": "Rattachement proposé",
+    "actions": "Actions",
+    "attach": "Rattacher",
+    "attachHint": "Rattacher à la société de la SCI",
+    "dismiss": "Abandonner",
+    "createExpense": "Créer une dépense",
+    "createIntervention": "Créer une intervention",
+    "quarantine": "Mettre en quarantaine",
+    "reason": "Motif",
+    "reasonPlaceholder": "Pourquoi cet élément est-il abandonné ?",
+    "capture": "Capturer une note",
+    "captureTitle": "Note ou SMS collé",
+    "captureText": "Contenu",
+    "captureTextPlaceholder": "Collez le SMS ou saisissez la note…",
+    "captureSubmit": "Enregistrer dans l’inbox",
+    "captured": "Note enregistrée dans l’inbox.",
+    "status": {
+      "received": "Reçu",
+      "analyzed": "Analysé",
+      "attached": "Rattaché",
+      "processed": "Traité",
+      "quarantined": "Quarantaine",
+      "ambiguous": "Ambigu",
+      "suspected_duplicate": "Doublon suspecté",
+      "rejected": "Rejeté"
+    }
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "patrimoine": {
+    "addEntity": "Ajouter une SCI",
+    "addBuilding": "Ajouter un immeuble",
+    "addUnit": "Ajouter un lot",
+    "edit": "Modifier",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "saving": "Enregistrement…",
+    "back": "Retour au patrimoine",
+    "loadMore": "Charger plus",
+    "loading": "Chargement…",
+    "filters": {
+      "legend": "Filtres",
+      "search": "Rechercher une SCI, un immeuble, une ville",
+      "searchPlaceholder": "Nom, code ou ville",
+      "usage": "Usage",
+      "usageAll": "Tous les usages",
+      "status": "État",
+      "statusAll": "Tous les états",
+      "clear": "Effacer les filtres",
+      "clearOne": "Retirer ce filtre",
+      "active": "Filtres actifs"
+    },
+    "tree": {
+      "title": "SCI, immeubles et lots",
+      "empty": "Aucun bien enregistré. Commencez par créer une SCI, puis un immeuble et ses lots.",
+      "noMatch": "Aucun bien ne correspond aux filtres.",
+      "expand": "Déployer",
+      "collapse": "Réduire",
+      "buildingCount": "{count, plural, =0 {aucun immeuble} one {# immeuble} other {# immeubles}}",
+      "unitCount": "{count, plural, =0 {aucun lot} one {# lot} other {# lots}}",
+      "occupied": "{count} occupé(s)",
+      "vacant": "{count} vacant(s)"
+    },
+    "tabs": {
+      "summary": "Synthèse",
+      "timeline": "Timeline",
+      "documents": "Documents"
+    },
+    "timeline": {
+      "empty": "Aucun évènement pour cet objet.",
+      "today": "Aujourd’hui",
+      "activity": "Échange",
+      "deadline": "Échéance",
+      "events": {
+        "legal_entity_created": "SCI créée",
+        "building_created": "Immeuble créé",
+        "building_updated": "Immeuble modifié",
+        "unit_created": "Lot créé",
+        "unit_updated": "Lot modifié",
+        "unit_usage_changed": "Usage du lot modifié"
+      }
+    },
+    "entity": {
+      "one": "SCI",
+      "newTitle": "Nouvelle SCI",
+      "editTitle": "Modifier la SCI",
+      "name": "Nom",
+      "legalForm": "Forme juridique",
+      "siren": "SIREN",
+      "sirenHint": "9 chiffres, facultatif.",
+      "incomeTaxRegime": "Régime d’imposition",
+      "vatStatus": "Situation TVA",
+      "eInvoicingChannel": "Canal de facturation électronique",
+      "fiscalYearEnd": "Clôture de l’exercice",
+      "fiscalYearEndMonth": "Mois de clôture",
+      "fiscalYearEndDay": "Jour de clôture",
+      "status": "État",
+      "currency": "Devise",
+      "created": "SCI enregistrée."
+    },
+    "building": {
+      "one": "Immeuble",
+      "newTitle": "Nouvel immeuble",
+      "editTitle": "Modifier l’immeuble",
+      "legalEntity": "SCI propriétaire",
+      "code": "Code",
+      "codeHint": "Identifiant court et stable, unique dans l’organisation.",
+      "name": "Nom",
+      "addressLine1": "Adresse",
+      "addressLine2": "Complément d’adresse",
+      "postalCode": "Code postal",
+      "city": "Ville",
+      "countryCode": "Pays",
+      "cadastralRef": "Référence cadastrale",
+      "acquiredOn": "Date d’acquisition",
+      "soldOn": "Date de cession",
+      "status": "État",
+      "created": "Immeuble enregistré."
+    },
+    "unit": {
+      "one": "Lot",
+      "newTitle": "Nouveau lot",
+      "editTitle": "Modifier le lot",
+      "building": "Immeuble",
+      "code": "Code",
+      "codeHint": "Unique dans l’immeuble.",
+      "label": "Désignation",
+      "kind": "Nature",
+      "floor": "Étage",
+      "roomCount": "Nombre de pièces",
+      "livingAreaSqm": "Surface habitable (m²)",
+      "ownershipShare": "Quote-part",
+      "energyClass": "Classe énergétique",
+      "energyAuditOn": "Date du diagnostic",
+      "status": "État",
+      "created": "Lot enregistré.",
+      "usageTitle": "Période d’usage",
+      "usageHint": "L’usage en cours est clôturé à la date de début du nouvel usage ; l’historique est conservé.",
+      "usageCurrent": "Usage en cours",
+      "usageStartsOn": "Début",
+      "usageEndsOn": "Fin (facultative)",
+      "usageNote": "Motif",
+      "usageSubmit": "Changer l’usage",
+      "usageHistory": "Historique des usages",
+      "usageChanged": "Usage enregistré."
+    },
+    "legalForm": {
+      "sci": "SCI",
+      "sarl": "SARL",
+      "sas": "SAS",
+      "sci_familiale": "SCI familiale",
+      "individual": "Personne physique",
+      "other": "Autre"
+    },
+    "incomeTaxRegime": {
+      "is": "Impôt sur les sociétés",
+      "ir": "Impôt sur le revenu",
+      "to_qualify": "À qualifier"
+    },
+    "vatStatus": {
+      "not_subject": "Non assujettie",
+      "exempt": "Exonérée",
+      "franchise": "Franchise en base",
+      "vat_non_deductible": "TVA non déductible",
+      "subject": "Assujettie",
+      "to_qualify": "À qualifier"
+    },
+    "eInvoicingChannel": {
+      "none": "Aucun",
+      "pdp": "PDP",
+      "pa": "Portail public",
+      "to_qualify": "À qualifier"
+    },
+    "entityStatus": {
+      "draft": "Brouillon",
+      "active": "Active",
+      "dissolved": "Dissoute",
+      "archived": "Archivée"
+    },
+    "buildingStatus": {
+      "prospect": "Prospect",
+      "active": "Actif",
+      "sold": "Vendu",
+      "archived": "Archivé"
+    },
+    "unitStatus": {
+      "draft": "Brouillon",
+      "active": "Actif",
+      "disposed": "Cédé",
+      "archived": "Archivé"
+    },
+    "unitKind": {
+      "dwelling": "Logement",
+      "annex": "Annexe",
+      "parking": "Stationnement",
+      "storage": "Cave ou stockage",
+      "technical": "Local technique",
+      "commercial": "Local commercial",
+      "common_area": "Partie commune"
+    },
+    "usage": {
+      "bare_rental": "Location nue",
+      "furnished_rental": "Location meublée",
+      "mobility_rental": "Bail mobilité",
+      "tourist_rental": "Location touristique",
+      "commercial_rental": "Location commerciale",
+      "owner_use": "Occupation propriétaire",
+      "vacant": "Vacant",
+      "works": "Travaux",
+      "common": "Partie commune",
+      "unknown": "Usage non renseigné"
+    }
+  }
+}

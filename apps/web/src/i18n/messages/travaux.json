@@ -1,0 +1,225 @@
+{
+  "travaux": {
+    "title": "Travaux",
+    "description": "Chantiers, interventions, équipements et compteurs",
+    "tabs": {
+      "overview": "Chantiers",
+      "equipment": "Équipements",
+      "meters": "Compteurs"
+    },
+    "projects": {
+      "title": "Projets de travaux",
+      "empty": "Aucun projet de travaux.",
+      "columns": {
+        "label": "Projet",
+        "nature": "Nature",
+        "treatment": "Traitement comptable",
+        "budget": "Budget",
+        "engaged": "Engagé",
+        "invoiced": "Facturé",
+        "paid": "Payé",
+        "remaining": "Reste à engager",
+        "status": "Statut"
+      },
+      "treatmentNote": "La catégorie métier ne décide jamais entre charge et immobilisation."
+    },
+    "interventions": {
+      "title": "Interventions",
+      "new": "Signaler une intervention",
+      "empty": "Aucune intervention.",
+      "openOnly": "Interventions ouvertes seulement",
+      "all": "Toutes",
+      "filterStatus": "Statut",
+      "filterUrgency": "Urgence",
+      "columns": {
+        "title": "Intervention",
+        "urgency": "Urgence",
+        "status": "Statut",
+        "reportedOn": "Signalée le",
+        "scheduledOn": "Planifiée le",
+        "completedOn": "Terminée le"
+      },
+      "form": {
+        "title": "Signaler une intervention",
+        "label": "Intitulé",
+        "description": "Description",
+        "urgency": "Urgence",
+        "performedBy": "Réalisée par",
+        "unit": "Lot",
+        "building": "Immeuble",
+        "scheduledOn": "Date planifiée",
+        "submit": "Signaler",
+        "submitting": "Enregistrement…",
+        "created": "Intervention signalée."
+      },
+      "detail": {
+        "title": "Intervention",
+        "advance": "Faire avancer",
+        "close": "Clôturer l’intervention",
+        "observedResult": "Résultat observé",
+        "ownerHours": "Temps passé (heures)",
+        "hourlyValue": "Valorisation horaire (facultative)",
+        "simulatedCost": "Coût économique simulé",
+        "simulatedNote": "Les heures du propriétaire restent un suivi opérationnel : jamais une charge ni une immobilisation.",
+        "nextCheckOn": "Prochaine vérification",
+        "nextCheckCreated": "Une échéance de contrôle a été créée.",
+        "timeline": "Faits enregistrés",
+        "transitionDone": "Intervention mise à jour.",
+        "closeHint": "La clôture exige le résultat observé et le temps passé.",
+        "noTransition": "Aucune transition possible depuis cet état."
+      }
+    },
+    "equipment": {
+      "title": "Équipements",
+      "new": "Nouvel équipement",
+      "empty": "Aucun équipement.",
+      "columns": {
+        "label": "Équipement",
+        "category": "Catégorie",
+        "brand": "Marque",
+        "serial": "N° de série",
+        "supplier": "Fournisseur",
+        "warranty": "Garantie",
+        "status": "Statut"
+      },
+      "form": {
+        "title": "Créer un équipement",
+        "category": "Catégorie",
+        "label": "Intitulé",
+        "brand": "Marque",
+        "model": "Modèle",
+        "serialNumber": "N° de série",
+        "purchasedOn": "Date d’achat",
+        "commissionedOn": "Mise en service",
+        "documentedCost": "Coût documenté",
+        "warrantyUntil": "Garantie jusqu’au",
+        "submit": "Créer",
+        "submitting": "Création…",
+        "created": "Équipement créé."
+      },
+      "assetNote": "L’équipement physique et l’immobilisation comptable sont deux objets reliés."
+    },
+    "meters": {
+      "title": "Compteurs",
+      "new": "Nouveau compteur",
+      "empty": "Aucun compteur.",
+      "columns": {
+        "fluid": "Fluide",
+        "scope": "Portée",
+        "serial": "N° de série",
+        "building": "Immeuble",
+        "lastIndex": "Dernier index",
+        "lastReadOn": "Relevé le",
+        "exceptions": "Exceptions"
+      },
+      "form": {
+        "title": "Créer un compteur",
+        "building": "Immeuble",
+        "fluid": "Fluide",
+        "scope": "Portée",
+        "unitOfMeasure": "Unité",
+        "multiplier": "Coefficient",
+        "serialNumber": "N° de série",
+        "prmPdl": "PRM / PDL",
+        "pce": "PCE",
+        "submit": "Créer",
+        "created": "Compteur créé."
+      },
+      "readings": {
+        "title": "Relevés",
+        "record": "Enregistrer un relevé",
+        "meter": "Compteur",
+        "indexValue": "Index",
+        "readOn": "Date du relevé",
+        "origin": "Origine",
+        "photo": "Photo du compteur",
+        "photoHint": "Facultative : la photo est déposée dans Documents et son identifiant est rattaché au relevé.",
+        "isAfterReset": "Relevé après remise à zéro",
+        "submit": "Enregistrer le relevé",
+        "submitting": "Enregistrement…",
+        "recorded": "Relevé enregistré.",
+        "exception": "Exception ouverte : l’index est inférieur au précédent, aucune consommation négative n’est produite.",
+        "empty": "Aucun relevé pour ce compteur.",
+        "columns": {
+          "readOn": "Date",
+          "indexValue": "Index",
+          "previous": "Index précédent",
+          "consumption": "Consommation",
+          "origin": "Origine",
+          "status": "Statut"
+        }
+      },
+      "fluids": {
+        "water_cold": "Eau froide",
+        "water_hot": "Eau chaude",
+        "electricity": "Électricité",
+        "gas": "Gaz",
+        "heat": "Chaleur",
+        "pv_production": "Production photovoltaïque",
+        "other": "Autre"
+      },
+      "scopes": {
+        "individual": "Individuel",
+        "sub_meter": "Sous-compteur",
+        "collective": "Collectif"
+      },
+      "origins": {
+        "owner": "Propriétaire",
+        "tenant": "Locataire",
+        "provider": "Fournisseur",
+        "inspection": "État des lieux",
+        "estimate": "Estimation",
+        "import": "Import"
+      }
+    },
+    "status": {
+      "draft": "Brouillon",
+      "planned": "Planifié",
+      "in_progress": "En cours",
+      "done": "Terminée",
+      "cancelled": "Annulée",
+      "on_hold": "En attente",
+      "reported": "Signalée",
+      "qualified": "Qualifiée",
+      "scheduled": "Planifiée",
+      "awaiting_part": "Pièce attendue",
+      "reopened": "Rouverte",
+      "in_service": "En service",
+      "out_of_service": "Hors service",
+      "removed": "Déposé",
+      "scrapped": "Mis au rebut",
+      "active": "Actif",
+      "replaced": "Remplacé",
+      "faulty": "Défaillant",
+      "recorded": "Enregistré",
+      "validated": "Validé",
+      "exception": "Exception",
+      "rejected": "Rejeté"
+    },
+    "urgency": {
+      "low": "Faible",
+      "normal": "Normale",
+      "high": "Élevée",
+      "critical": "Critique"
+    },
+    "nature": {
+      "maintenance": "Entretien",
+      "repair": "Réparation",
+      "improvement": "Amélioration",
+      "construction": "Construction",
+      "to_qualify": "À qualifier"
+    },
+    "treatment": {
+      "expense": "Charge",
+      "capitalized": "Immobilisation",
+      "mixed": "Mixte",
+      "to_qualify": "À qualifier"
+    },
+    "performedBy": {
+      "owner": "Propriétaire",
+      "supplier": "Prestataire",
+      "tenant": "Locataire",
+      "insurer": "Assureur"
+    }
+  }
+}

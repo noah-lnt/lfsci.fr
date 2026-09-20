@@ -1,0 +1,73 @@
+name: lfsci-dev
+
+services:
+  db:
+    build: ./docker/db
+    container_name: lfsci-dev-db
+    environment:
+      POSTGRES_DB: lfsci
+      POSTGRES_USER: lfsci
+      POSTGRES_PASSWORD: ${DEV_DB_PASSWORD:-lfsci}
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - lfsci-dev-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lfsci -d lfsci"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  odoo-db:
+    image: postgres:16
+    container_name: lfsci-dev-odoo-db
+    profiles: [odoo]
+    environment:
+      POSTGRES_DB: odoo
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - lfsci-dev-odoo-pgdata:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo -d odoo"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  odoo:
+    image: odoo:18
+    container_name: lfsci-dev-odoo
+    profiles: [odoo]
+    depends_on:
+      odoo-db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8069:8069"
+    volumes:
+      - lfsci-dev-odoo-data:/var/lib/odoo
+      - ./docker/odoo/addons:/mnt/extra-addons
+      - ./docker/odoo/oca:/mnt/oca
+      - ./docker/odoo/odoo.conf:/etc/odoo/odoo.conf
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8069/web/health', timeout=5)\""
+      interval: 10s
+      timeout: 8s
+      retries: 30
+      start_period: 60s
+
+volumes:
+  lfsci-dev-pgdata:
+  lfsci-dev-odoo-pgdata:
+  lfsci-dev-odoo-data:
