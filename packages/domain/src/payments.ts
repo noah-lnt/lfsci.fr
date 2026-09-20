@@ -1,4 +1,5 @@
-import { type Decimal, money, sum, toMoney, ZERO } from "./money";
+import { type Decimal, maxOf, money, sum, toMoney, ZERO } from "./money";
+import { type IsoDateString, parseIsoDate } from "./periods";
 import { type Blocked, blocked } from "./result";
 
 export type TermBalance = {
@@ -145,5 +146,178 @@ export function allocatePayment(input: {
     overpayment: toMoney(status === "overpaid" ? unallocated : ZERO),
     status,
     terms,
+  };
+}
+
+/**
+ * LOY-04 qualification of an unpaid term. Only `due` is a plain arrear: every
+ * other value means the automation must stop and a human must look.
+ */
+export type ArrearsQualification =
+  | "due"
+  | "unapplied_receipt"
+  | "payment_in_transit"
+  | "disputed"
+  | "sync_incident";
+
+export type ReminderLevel = "reminder_1" | "reminder_2" | "formal_notice";
+
+export type ReminderPolicy = {
+  graceDays: number;
+  firstReminderDays: number;
+  secondReminderDays: number;
+  formalNoticeDays: number;
+  minimumSpacingDays: number;
+  minimumOutstanding: string;
+  staleBankFeedDays: number;
+};
+
+/** Delays are the owner's to approve (LOY-04, "délais approuvés"); these are the defaults. */
+export const DEFAULT_REMINDER_POLICY: ReminderPolicy = {
+  graceDays: 5,
+  firstReminderDays: 8,
+  secondReminderDays: 21,
+  formalNoticeDays: 45,
+  minimumSpacingDays: 8,
+  minimumOutstanding: "5.00",
+  staleBankFeedDays: 7,
+};
+
+const LEVEL_RANK: Record<ReminderLevel, number> = {
+  reminder_1: 1,
+  reminder_2: 2,
+  formal_notice: 3,
+};
+
+export const reminderLevels: readonly ReminderLevel[] = [
+  "reminder_1",
+  "reminder_2",
+  "formal_notice",
+];
+
+/** §17.1: a plain reminder is routine (C); a mise en demeure is a sensitive act (D). */
+export function autonomyForReminder(level: ReminderLevel): "C" | "D" {
+  return level === "formal_notice" ? "D" : "C";
+}
+
+/**
+ * Signed day distance between two civil dates. `daysBetween` counts days
+ * inclusively and clamps to zero, which cannot express "not due yet".
+ */
+export function daysLate(from: IsoDateString, to: IsoDateString): number {
+  return Math.round((parseIsoDate(to).getTime() - parseIsoDate(from).getTime()) / 86_400_000);
+}
+
+export function isArrearsAutomationSuspended(qualification: ArrearsQualification): boolean {
+  return qualification !== "due";
+}
+
+export function outstandingOf(term: { total: string; allocated: string }): string {
+  return toMoney(maxOf(money(term.total).minus(money(term.allocated)), ZERO));
+}
+
+export type ArrearsQualificationInput = {
+  termStatus: string;
+  leaseStatus: string;
+  /** Allocated to the term but not yet confirmed by the ledger. */
+  pendingAllocated: string;
+  /** Received from this tenant and not allocated to anything (LOY-02). */
+  unappliedCredit: string;
+  /** Days since the last successful ledger read; null when no connector is tracked yet. */
+  ledgerStaleDays: number | null;
+  ledgerHealthy: boolean;
+  policy?: ReminderPolicy;
+};
+
+export function qualifyArrears(input: ArrearsQualificationInput): ArrearsQualification {
+  const policy = input.policy ?? DEFAULT_REMINDER_POLICY;
+  if (input.termStatus === "disputed" || input.leaseStatus === "disputed") return "disputed";
+  if (!input.ledgerHealthy) return "sync_incident";
+  if (input.ledgerStaleDays !== null && input.ledgerStaleDays > policy.staleBankFeedDays) {
+    return "sync_incident";
+  }
+  if (money(input.pendingAllocated).greaterThan(ZERO)) return "payment_in_transit";
+  if (money(input.unappliedCredit).greaterThan(ZERO)) return "unapplied_receipt";
+  return "due";
+}
+
+export type ReminderHoldReason =
+  | "settled"
+  | "suspended"
+  | "negligible_amount"
+  | "within_grace"
+  | "max_level_reached"
+  | "too_soon";
+
+export type ReminderDecision =
+  | { propose: false; reason: ReminderHoldReason; level: null; daysLate: number }
+  | { propose: true; reason: null; level: ReminderLevel; autonomy: "C" | "D"; daysLate: number };
+
+export type ReminderGradeInput = {
+  today: IsoDateString;
+  dueOn: IsoDateString;
+  outstanding: string;
+  qualification: ArrearsQualification;
+  lastLevel: ReminderLevel | null;
+  lastSentOn: IsoDateString | null;
+  policy?: ReminderPolicy;
+};
+
+function thresholdOf(policy: ReminderPolicy, level: ReminderLevel): number {
+  if (level === "reminder_1") return policy.firstReminderDays;
+  if (level === "reminder_2") return policy.secondReminderDays;
+  return policy.formalNoticeDays;
+}
+
+function nextLevelAfter(level: ReminderLevel | null): ReminderLevel | null {
+  if (level === null) return "reminder_1";
+  if (level === "reminder_1") return "reminder_2";
+  if (level === "reminder_2") return "formal_notice";
+  return null;
+}
+
+/**
+ * LOY-04: the delay decides how far the ladder may go, the history decides the
+ * next rung. A long-standing arrear never jumps straight to a mise en demeure —
+ * the escalation is one step at a time, so the owner always has a refused step
+ * to point at.
+ */
+export function gradeReminder(input: ReminderGradeInput): ReminderDecision {
+  const policy = input.policy ?? DEFAULT_REMINDER_POLICY;
+  const late = daysLate(input.dueOn, input.today);
+  const hold = (reason: ReminderHoldReason): ReminderDecision => ({
+    propose: false,
+    reason,
+    level: null,
+    daysLate: late,
+  });
+
+  if (money(input.outstanding).lessThanOrEqualTo(ZERO)) return hold("settled");
+  if (isArrearsAutomationSuspended(input.qualification)) return hold("suspended");
+  if (money(input.outstanding).lessThan(money(policy.minimumOutstanding))) {
+    return hold("negligible_amount");
+  }
+  if (late <= policy.graceDays) return hold("within_grace");
+
+  const next = nextLevelAfter(input.lastLevel);
+  if (next === null) return hold("max_level_reached");
+  if (late < thresholdOf(policy, next)) return hold("within_grace");
+
+  const reached = reminderLevels.filter((level) => late >= thresholdOf(policy, level)).at(-1);
+  if (reached === undefined || LEVEL_RANK[next] > LEVEL_RANK[reached]) return hold("too_soon");
+
+  if (
+    input.lastSentOn !== null &&
+    daysLate(input.lastSentOn, input.today) < policy.minimumSpacingDays
+  ) {
+    return hold("too_soon");
+  }
+
+  return {
+    propose: true,
+    reason: null,
+    level: next,
+    autonomy: autonomyForReminder(next),
+    daysLate: late,
   };
 }

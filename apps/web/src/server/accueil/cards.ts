@@ -99,7 +99,7 @@ function lateRentCards(source: CardSource): Draft[] {
       blocking: false,
       proposedAction: {
         label: "Rapprocher un encaissement",
-        href: `/finance?rentTerm=${row.rentTermId}`,
+        href: `/locations/recouvrement?rentTerm=${row.rentTermId}`,
       },
       expectedEffect: "Le terme passe à réglé et la quittance devient préparable.",
       severity: late > 30 ? "critical" : "warning",
@@ -109,7 +109,7 @@ function lateRentCards(source: CardSource): Draft[] {
       ],
       occurredAt: atNoon(row.dueOn),
       groupKey: "late_rent",
-      groupHref: "/finance?filter=late",
+      groupHref: "/locations/recouvrement",
     } satisfies Draft;
   });
 }

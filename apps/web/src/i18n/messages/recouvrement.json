@@ -1,0 +1,84 @@
+{
+  "recouvrement": {
+    "title": "Recouvrement",
+    "description": "Qui est en retard, de combien et depuis quand",
+    "asOf": "Situation au",
+    "empty": "Aucun impayé à cette date. Les termes échus non réglés apparaîtront ici avec leur ancienneté, leur qualification et la relance proposée.",
+    "totals": {
+      "leases": "Baux en retard",
+      "outstanding": "Reste dû",
+      "suspended": "Relances suspendues"
+    },
+    "policy": {
+      "title": "Délais appliqués",
+      "graceDays": "Tolérance après l’échéance",
+      "firstReminderDays": "Relance simple à partir de",
+      "secondReminderDays": "Relance ferme à partir de",
+      "formalNoticeDays": "Mise en demeure à partir de",
+      "minimumSpacingDays": "Intervalle minimal entre deux messages",
+      "minimumOutstanding": "Montant plancher",
+      "days": "{count} jours",
+      "pending": "Ces délais sont des valeurs par défaut : ils restent à valider par le propriétaire."
+    },
+    "table": {
+      "lease": "Bail",
+      "tenant": "Locataire",
+      "outstanding": "Reste dû",
+      "oldestDueOn": "Plus ancienne échéance",
+      "daysLate": "Retard",
+      "qualification": "Qualification",
+      "nextAction": "Relance proposée",
+      "daysValue": "{count} j"
+    },
+    "qualification": {
+      "due": "Exigible et impayé",
+      "unapplied_receipt": "Somme reçue non affectée",
+      "payment_in_transit": "Paiement en transit",
+      "disputed": "Dossier contesté",
+      "sync_incident": "Incident de synchronisation"
+    },
+    "level": {
+      "reminder_1": "Relance simple",
+      "reminder_2": "Relance ferme",
+      "formal_notice": "Mise en demeure"
+    },
+    "levelAutonomy": {
+      "C": "niveau C — validation individuelle",
+      "D": "niveau D — validation humaine obligatoire"
+    },
+    "hold": {
+      "settled": "Le solde est réglé.",
+      "suspended": "Relance suspendue : le paiement ou le dossier doit d’abord être clarifié.",
+      "negligible_amount": "Le reste dû est inférieur au montant plancher.",
+      "within_grace": "Le délai de relance n’est pas atteint.",
+      "max_level_reached": "La mise en demeure a déjà été envoyée ; la suite relève du contentieux.",
+      "too_soon": "Trop tôt après le dernier message."
+    },
+    "detail": {
+      "terms": "Termes échus",
+      "period": "Période",
+      "dueOn": "Exigible le",
+      "total": "Montant",
+      "allocated": "Réglé",
+      "remaining": "Reste dû",
+      "history": "Relances envoyées",
+      "historyEmpty": "Aucune relance enregistrée pour ce bail.",
+      "template": "Modèle",
+      "status": "État",
+      "recipient": "Destinataire",
+      "sentAt": "Envoyée le",
+      "command": "Commande",
+      "error": "Erreur",
+      "noRecipient": "Aucune adresse e-mail active : la relance ne peut pas être préparée."
+    },
+    "action": {
+      "propose": "Préparer la relance",
+      "proposeLevel": "Préparer : {level}",
+      "prepared": "Relance préparée : elle attend votre validation avant tout envoi.",
+      "preparedHint": "Rien ne part tant que la validation n’a pas eu lieu.",
+      "openApprovals": "Ouvrir les validations",
+      "preview": "Aperçu du message",
+      "subject": "Objet"
+    }
+  }
+}

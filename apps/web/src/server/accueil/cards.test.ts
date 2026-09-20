@@ -34,7 +34,7 @@ describe("buildCards", () => {
   it("produces a card that matches the wire contract", () => {
     const [card] = buildCards({ ...EMPTY, lateRentTerms: [lateRent("5a", "2026-09-01")] });
     expect(ActionCard.safeParse(card).success).toBe(true);
-    expect(card?.proposedAction.href).toContain("/finance");
+    expect(card?.proposedAction.href).toContain("/locations/recouvrement");
     expect(card?.objectRefs).toContainEqual({ kind: "rent_term", id: UUID("5a") });
   });
 
