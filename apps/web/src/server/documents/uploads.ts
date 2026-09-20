@@ -288,7 +288,7 @@ export async function finalizeUpload(
     organizationId: scope.organizationId,
     documentId: input.documentId,
     documentVersionId: pending.id,
-    kind: entity.nature,
+    kind: extractionKindFor(entity.nature),
   });
 
   return { document: entity, analysisQueued: jobId !== null };
@@ -327,4 +327,16 @@ export async function downloadUrl(
   });
 
   return { url, expiresAt: new Date(Date.now() + DOWNLOAD_SECONDS * 1000).toISOString() };
+}
+
+const EXTRACTION_BY_NATURE: Record<string, string> = {
+  invoice: "invoice",
+  receipt: "receipt",
+  lease: "lease",
+  insurance: "attestation",
+};
+
+/** A nature the model has a schema for is extracted as such; anything else is qualified first. */
+export function extractionKindFor(nature: string): string {
+  return EXTRACTION_BY_NATURE[nature] ?? "inboxIntent";
 }

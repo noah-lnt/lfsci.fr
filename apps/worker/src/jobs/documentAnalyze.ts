@@ -92,7 +92,9 @@ export const popplerRenderer: PageRenderer = async ({ pdf, maxPages, maxEdgePx }
 export const DocumentAnalyzeData = JobBase.extend({
   organizationId: z.uuid(),
   documentVersionId: z.uuid(),
-  kind: z.enum(["receipt", "invoice", "attestation", "lease", "meterPhoto"]),
+  // `inboxIntent` is the qualification pass: a capture whose nature is not known
+  // yet gets a proposed kind and links instead of a schema it may not fit.
+  kind: z.enum(["receipt", "invoice", "attestation", "lease", "meterPhoto", "inboxIntent"]),
   inboxItemId: z.uuid().optional(),
 });
 export type DocumentAnalyzeData = z.infer<typeof DocumentAnalyzeData>;
