@@ -39,18 +39,22 @@ function line(overrides: Partial<CopyLine> & { code: string }): CopyLine {
 const rent = (over: Partial<CopyLine>) => line({ code: COPY_ACCOUNTS.rent, ...over });
 
 describe("odoo copy — rents recognised on receipt", () => {
-  it("nets a debit against the credits of the same partner and month, in date order, and leaves other months alone", () => {
+  it("nets a debit against the receipts of the same partner and month, in date order, one term per month", () => {
     const march1 = rent({ id: 1, date: "2026-03-02", credit: "700.00" });
     const march2 = rent({ id: 2, date: "2026-03-20", credit: "700.00" });
     const marchRefund = rent({ id: 3, date: "2026-03-25", debit: "100.00" });
     const april = rent({ id: 4, date: "2026-04-03", credit: "700.00" });
     const otherTenant = rent({ id: 5, date: "2026-03-10", credit: "500.00", partner_id: 22 });
     const { terms, leftover } = netRentLines([april, marchRefund, march2, otherTenant, march1]);
+    // One term per tenant and month; the refund reduces the month's first receipt.
     expect(terms.map((t) => [t.credit.id, t.amount, t.netted.map((l) => l.id)])).toEqual([
-      [1, "600.00", [3]],
+      [1, "1300.00", [3]],
       [5, "500.00", []],
-      [2, "700.00", []],
       [4, "700.00", []],
+    ]);
+    expect(terms[0]?.receipts.map((r) => [r.credit.id, r.amount])).toEqual([
+      [1, "600.00"],
+      [2, "700.00"],
     ]);
     expect(leftover).toEqual([]);
   });
@@ -62,14 +66,15 @@ describe("odoo copy — rents recognised on receipt", () => {
       rent({ id: 3, date: "2026-05-16", debit: "400.00" }),
       rent({ id: 4, date: "2026-06-16", debit: "50.00" }),
     ]);
-    expect(terms.map((t) => [t.credit.id, t.amount])).toEqual([
+    expect(terms.map((t) => [t.credit.id, t.amount])).toEqual([[1, "200.00"]]);
+    expect(terms[0]?.receipts.map((r) => [r.credit.id, r.amount])).toEqual([
       [1, "0.00"],
       [2, "200.00"],
     ]);
     expect(leftover.map((l) => l.id)).toEqual([4]);
   });
 
-  it("maps a month with two receipts to two settled terms carrying the statement line, and rejects the partner-less line", () => {
+  it("maps a month with two receipts to one settled term with two receipts, and rejects the partner-less line", () => {
     const mapped = mapLines(
       [
         rent({ id: 1, date: "2026-03-02", credit: "700.00" }),
@@ -81,22 +86,34 @@ describe("odoo copy — rents recognised on receipt", () => {
       COPY_ACCOUNTS,
     );
     const terms = mapped.records.filter((r) => r.kind === "rent_term");
-    expect(terms).toHaveLength(3);
+    expect(terms).toHaveLength(2);
     expect(terms[0]).toMatchObject({
       source: "odoo_copy",
       ref: "account.move.line:1",
       periodStart: "2026-03-01",
       periodEnd: "2026-03-31",
       dueOn: "2026-03-02",
-      total: "700.00",
+      total: "1400.00",
       residual: "0.00",
       settled: true,
       component: "rent",
       odooStatementLineId: 5001,
       nettedRefs: [],
     });
+    // Two receipts in the month are two payments on the same term, never two terms.
+    expect(terms[0]?.kind === "rent_term" ? terms[0].receipts : []).toEqual([
+      expect.objectContaining({
+        ref: "account.move.line:1",
+        amount: "700.00",
+        receivedOn: "2026-03-02",
+      }),
+      expect.objectContaining({
+        ref: "account.move.line:2",
+        amount: "700.00",
+        receivedOn: "2026-03-20",
+      }),
+    ]);
     expect(terms[1]).toMatchObject({ component: "charges", total: "80.00" });
-    expect(terms[2]).toMatchObject({ ref: "account.move.line:2", dueOn: "2026-03-20" });
     expect(mapped.rejections).toEqual([
       expect.objectContaining({ ref: "account.move.line:4", reason: "missing_field" }),
     ]);
@@ -365,9 +382,14 @@ describe.skipIf(!TEST_URL)("odoo copy — against a throwaway Odoo 19-shaped dat
     expect(
       terms.map((t) => [t.ref, t.total, t.component, t.odooStatementLineId, t.nettedRefs]),
     ).toEqual([
-      ["account.move.line:1", "600.00", "rent", 1, ["account.move.line:5"]],
-      ["account.move.line:3", "700.00", "rent", 2, []],
+      ["account.move.line:1", "1300.00", "rent", 1, ["account.move.line:5"]],
       ["account.move.line:21", "80.00", "charges", 11, []],
+    ]);
+    expect(
+      terms[0]?.kind === "rent_term" ? terms[0].receipts.map((r) => [r.ref, r.amount]) : [],
+    ).toEqual([
+      ["account.move.line:1", "600.00"],
+      ["account.move.line:3", "700.00"],
     ]);
     expect(terms[0]).toMatchObject({
       entity: "SCI Exemple",
@@ -420,7 +442,6 @@ describe.skipIf(!TEST_URL)("odoo copy — against a throwaway Odoo 19-shaped dat
       }),
     ]);
     expect(Object.values(plan.resolutions.rentTermLeases)).toEqual([
-      { create: "lease:BAIL-ODOO-21" },
       { create: "lease:BAIL-ODOO-21" },
       { create: "lease:BAIL-ODOO-21" },
     ]);

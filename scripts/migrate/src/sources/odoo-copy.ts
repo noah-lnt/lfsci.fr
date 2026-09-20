@@ -157,12 +157,19 @@ const REJECT = (
   detail: `${line.move_name} du ${line.date} : ${detail}`,
 });
 
-export type NettedTerm = { credit: CopyLine; amount: string; netted: CopyLine[] };
+export type NettedReceipt = { credit: CopyLine; amount: string };
+export type NettedTerm = {
+  credit: CopyLine;
+  amount: string;
+  netted: CopyLine[];
+  receipts: NettedReceipt[];
+};
 
 /**
- * One term per credit; debits of the same partner, month and account reduce the
- * credits of that month in date order. A debit larger than the month's credits is
- * left over and reported by the caller.
+ * One term per partner, month and account (the schema allows one term per lease,
+ * kind and month); each credit of the month is a receipt on it. Debits of the
+ * same month reduce the receipts in date order. A debit larger than the month's
+ * credits is left over and reported by the caller.
  */
 export function netRentLines(lines: CopyLine[]): { terms: NettedTerm[]; leftover: CopyLine[] } {
   const groups = new Map<string, CopyLine[]>();
@@ -180,14 +187,20 @@ export function netRentLines(lines: CopyLine[]): { terms: NettedTerm[]; leftover
     const debits = ordered.filter((line) => decimal(line.debit).gt(0));
     let remaining = sum(debits.map((line) => decimal(line.debit)));
     const nettedBy: CopyLine[] = remaining.isZero() ? [] : debits;
+    const receipts: NettedReceipt[] = [];
     for (const credit of credits) {
       const gross = decimal(credit.credit);
       const taken = remaining.gt(gross) ? gross : remaining;
       remaining = remaining.minus(taken);
+      receipts.push({ credit, amount: toMoney(gross.minus(taken)) });
+    }
+    const first = credits[0];
+    if (first) {
       terms.push({
-        credit,
-        amount: toMoney(gross.minus(taken)),
-        netted: taken.isZero() ? [] : nettedBy,
+        credit: first,
+        amount: toMoney(sum(receipts.map((receipt) => decimal(receipt.amount)))),
+        netted: nettedBy,
+        receipts,
       });
     }
     if (remaining.gt(0)) leftover.push(...debits);
@@ -354,6 +367,15 @@ export function mapLines(
       odooMoveName: credit.move_name,
       odooStatementLineId: credit.statement_line_id,
       nettedRefs: term.netted.map((line) => `account.move.line:${line.id}`),
+      receipts: term.receipts
+        .filter((receipt) => !decimal(receipt.amount).isZero())
+        .map((receipt) => ({
+          ref: `account.move.line:${receipt.credit.id}`,
+          amount: receipt.amount,
+          receivedOn: receipt.credit.date,
+          odooMoveName: receipt.credit.move_name,
+          odooStatementLineId: receipt.credit.statement_line_id,
+        })),
     };
     records.push(record);
   }

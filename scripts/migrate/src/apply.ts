@@ -380,32 +380,47 @@ async function writeEntityRows(
     await tx.execute(
       sql`UPDATE rent_term SET current_version_id = ${version.id}::uuid WHERE id = ${term.id}::uuid`,
     );
-    let paymentId: string | null = null;
-    if (!paid.isZero()) {
+    // The invoice path knows one payment; the cash path knows every receipt of the month.
+    const receipts =
+      record.receipts.length > 0
+        ? record.receipts
+        : paid.isZero()
+          ? []
+          : [
+              {
+                ref: record.ref,
+                amount: toMoney(paid),
+                receivedOn: record.dueOn,
+                odooMoveName: record.odooMoveName,
+                odooStatementLineId: record.odooStatementLineId,
+              },
+            ];
+    const paymentIds: string[] = [];
+    for (const receipt of receipts) {
       const [payment] = await tx
         .insert(tables.payment)
         .values({
           organizationId,
           legalEntityId: entityId,
           direction: "inbound",
-          amount: toMoney(paid),
-          receivedOn: record.dueOn,
+          amount: receipt.amount,
+          receivedOn: receipt.receivedOn,
           payerPersonId: payerId,
           payerLabel: record.partnerName,
           status: "allocated",
           odooReadAt: readAt,
         })
         .returning({ id: tables.payment.id });
-      if (!payment) throw new ApplyRefused(`${record.odooMoveName} : règlement non créé`);
-      paymentId = payment.id;
+      if (!payment) throw new ApplyRefused(`${receipt.odooMoveName} : règlement non créé`);
+      paymentIds.push(payment.id);
       await tx.insert(tables.paymentAllocation).values({
         organizationId,
         paymentId: payment.id,
         rentTermId: term.id,
-        amount: toMoney(paid),
-        allocatedOn: record.dueOn,
+        amount: receipt.amount,
+        allocatedOn: receipt.receivedOn,
         confirmedByOdoo: true,
-        odooReconcileRef: record.odooMoveName,
+        odooReconcileRef: receipt.odooMoveName,
         odooReadAt: readAt,
       });
     }
@@ -413,7 +428,8 @@ async function writeEntityRows(
       receivedOnAssumed: record.odooStatementLineId === null,
       odooStatementLineId: record.odooStatementLineId,
       nettedRefs: record.nettedRefs,
-      paymentId,
+      paymentIds,
+      receipts: receipts.map((receipt) => receipt.ref),
       residual: record.residual,
     });
     bump(report.written, "rent_term");

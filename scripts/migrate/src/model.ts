@@ -93,6 +93,16 @@ export type RentTermRecord = Base & {
   odooMoveName: string;
   odooStatementLineId: number | null;
   nettedRefs: string[];
+  /** One term per tenant and month; each receipt of that month becomes its own payment. */
+  receipts: RentReceipt[];
+};
+
+export type RentReceipt = {
+  ref: string;
+  amount: string;
+  receivedOn: string;
+  odooMoveName: string;
+  odooStatementLineId: number | null;
 };
 
 export type ExpenseRecord = Base & {

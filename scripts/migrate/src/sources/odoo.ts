@@ -264,6 +264,7 @@ export function createOdooSource(options: OdooSourceOptions): SourceReader {
         odooMoveName: move.name || ref,
         odooStatementLineId: null,
         nettedRefs: [],
+        receipts: [],
       };
       return { record };
     }
