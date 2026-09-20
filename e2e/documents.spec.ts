@@ -1,0 +1,64 @@
+import { expect, test } from "@playwright/test";
+import { assertAccessible, createChain, signUp } from "./fixtures/patrimoine";
+
+// One dev server serves every project; ten concurrent sign-up flows starve it,
+// and a route still compiling must not trip the default 5 s action timeout.
+test.describe.configure({ mode: "serial", timeout: 120_000 });
+test.use({ reducedMotion: "reduce", actionTimeout: 20_000, navigationTimeout: 60_000 });
+
+const TICKET = "e2e/fixtures/ticket.png";
+
+test("a photo captured from the lot is stored, listed and downloadable", async ({ page }) => {
+  await signUp(page);
+  const chain = await createChain(page);
+
+  await page.goto(chain.unitUrl);
+  await page.getByRole("tab", { name: "Documents" }).click();
+  await expect(page.getByText("Aucun document.", { exact: false })).toBeVisible();
+
+  await page.locator('input[type="file"]').setInputFiles(TICKET);
+
+  // UX-03 wording: the queue says where the file is, never an ambiguous "sauvegardé".
+  const queue = page.getByTestId("upload-queue");
+  await expect(queue).toContainText("ticket.png");
+  await expect(queue).toContainText("synchronisé", { timeout: 60_000 });
+
+  const row = page.getByTestId("document-row").filter({ hasText: "ticket.png" });
+  await expect(row).toHaveCount(1, { timeout: 60_000 });
+  await expect(row).toContainText("À qualifier");
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    row.getByRole("button", { name: "Télécharger" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe("ticket.png");
+  const fetched = await page.request.get(download.url());
+  expect(fetched.status()).toBe(200);
+  expect((await fetched.body()).length).toBe(70);
+
+  await assertAccessible(page, "onglet Documents du lot");
+});
+
+test("the library lists the captured document and its filters clear", async ({ page }) => {
+  await signUp(page);
+  const chain = await createChain(page);
+
+  await page.goto(chain.unitUrl);
+  await page.getByRole("tab", { name: "Documents" }).click();
+  await page.locator('input[type="file"]').setInputFiles(TICKET);
+  await expect(page.getByTestId("upload-queue")).toContainText("synchronisé", { timeout: 60_000 });
+
+  await page.goto("/documents");
+  await expect(page.getByTestId("document-row").filter({ hasText: "ticket.png" })).toHaveCount(1, {
+    timeout: 60_000,
+  });
+
+  await page.getByLabel("Rechercher un document").fill("introuvable");
+  await expect(page.getByText("Aucun document.", { exact: false })).toBeVisible({
+    timeout: 60_000,
+  });
+  await page.getByRole("button", { name: "Effacer les filtres" }).click();
+  await expect(page.getByTestId("document-row").filter({ hasText: "ticket.png" })).toHaveCount(1, {
+    timeout: 60_000,
+  });
+});
