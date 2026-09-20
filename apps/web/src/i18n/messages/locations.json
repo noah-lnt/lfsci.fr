@@ -67,7 +67,11 @@
       "cancelled": "Annulé",
       "disputed": "Contentieux"
     },
-    "settlement": { "unpaid": "Impayé", "partial": "Partiel", "paid": "Réglé" },
+    "settlement": {
+      "unpaid": "Impayé",
+      "partial": "Partiel",
+      "paid": "Réglé"
+    },
     "leaseKind": {
       "bare": "Bail nu",
       "furnished": "Bail meublé",
@@ -92,7 +96,12 @@
       "payer_third_party": "Tiers payeur",
       "landlord": "Bailleur"
     },
-    "revisionIndex": { "irl": "IRL", "ilc": "ILC", "ilat": "ILAT", "none": "Sans clause" },
+    "revisionIndex": {
+      "irl": "IRL",
+      "ilc": "ILC",
+      "ilat": "ILAT",
+      "none": "Sans clause"
+    },
     "depositMovement": {
       "received": "Reçu",
       "retained": "Retenu",
@@ -116,7 +125,9 @@
       "payments": "Paiements",
       "deposit": "Dépôt",
       "revision": "Révision",
-      "timeline": "Timeline"
+      "timeline": "Timeline",
+      "inspections": "États des lieux",
+      "revisionDetail": "Révisions"
     },
     "form": {
       "sectionTenant": "Locataire",

@@ -1,0 +1,187 @@
+{
+  "inspections": {
+    "title": "États des lieux",
+    "description": "Visite pièce par pièce, inventaire du meublé et restitution du dépôt",
+    "loading": "Chargement…",
+    "backToLease": "Retour au bail",
+    "backToList": "Retour aux états des lieux",
+    "empty": "Aucun état des lieux pour ce bail. Ouvrez-en un pour démarrer la visite.",
+    "new": "Ouvrir un état des lieux",
+    "openCapture": "Reprendre la visite",
+    "compare": "Comparer entrée et sortie",
+    "openSettlement": "Restitution du dépôt",
+    "kind": {
+      "entry": "Entrée",
+      "exit": "Sortie",
+      "intermediate": "Intermédiaire"
+    },
+    "status": {
+      "draft": "Brouillon",
+      "in_progress": "En cours",
+      "pending_sync": "En attente de synchronisation",
+      "signed": "Signé",
+      "contested": "Contesté",
+      "archived": "Archivé"
+    },
+    "condition": {
+      "new": "Neuf",
+      "good": "Bon",
+      "fair": "Correct",
+      "worn": "Usé",
+      "damaged": "Dégradé",
+      "missing": "Manquant",
+      "not_checked": "Non vérifié"
+    },
+    "columns": {
+      "kind": "Nature",
+      "performedOn": "Réalisé le",
+      "unit": "Lot",
+      "status": "Statut",
+      "findings": "Constats",
+      "photos": "Photos",
+      "keys": "Remise des clés",
+      "complement": "Complément possible jusqu’au",
+      "actions": "Actions"
+    },
+    "create": {
+      "title": "Ouvrir un état des lieux",
+      "kind": "Nature de la visite",
+      "unit": "Lot",
+      "performedOn": "Date de la visite",
+      "offline": "Visite réalisée hors connexion",
+      "submit": "Ouvrir la visite",
+      "noUnit": "Rattachez d’abord un lot au bail."
+    },
+    "capture": {
+      "title": "Visite pièce par pièce",
+      "room": "Pièce",
+      "element": "Élément",
+      "condition": "État",
+      "descriptionLabel": "Observation contradictoire",
+      "add": "Ajouter le constat",
+      "empty": "Aucun constat pour l’instant. Ajoutez la première pièce.",
+      "roomPlaceholder": "Séjour, Cuisine, Chambre 1…",
+      "elementPlaceholder": "Mur nord, Plan de travail, Fenêtre…",
+      "remove": "Supprimer le constat",
+      "save": "Enregistrer",
+      "findingsTitle": "Constats",
+      "keysHandedOverOn": "Remise des clés",
+      "performedOn": "Date de la visite",
+      "heatingComplement": "Complément chauffage jusqu’au",
+      "heatingHint": "Les éléments de chauffage se complètent pendant le premier mois de la période de chauffe ; saisissez la date que vous retenez.",
+      "complementNotice": "Une demande de complément reste recevable jusqu’au {date}. Le document signé n’est jamais modifié : le complément s’ajoute.",
+      "signatureEvidence": "Preuve de signature",
+      "signatureHint": "Référence de la remise : accusé, horodatage du prestataire, ou mention de la remise en main propre.",
+      "sign": "Marquer comme signé",
+      "saved": "Visite enregistrée.",
+      "signed": "État des lieux signé.",
+      "sealed": "État des lieux signé : les constats restent consultables, la suppression est fermée.",
+      "unitLabel": "Lot",
+      "deleteInspection": "Supprimer cette visite"
+    },
+    "photos": {
+      "title": "Photos et pièces jointes",
+      "empty": "Aucune photo rattachée à cette visite.",
+      "author": "Auteur",
+      "capturedAt": "Capturée le",
+      "receivedAt": "Reçue le",
+      "fingerprint": "Empreinte",
+      "metadataMissing": "Métadonnées de capture absentes",
+      "unknownAuthor": "Auteur inconnu"
+    },
+    "inventory": {
+      "title": "Inventaire du meublé",
+      "hint": "L’inventaire est distinct de l’état des lieux. Une pièce manquante ne devient jamais une retenue automatique.",
+      "empty": "Aucune ligne d’inventaire.",
+      "category": "Catégorie",
+      "label": "Désignation",
+      "quantity": "Quantité",
+      "condition": "État",
+      "purchaseValue": "Valeur d’achat",
+      "presentAtEntry": "Présent à l’entrée",
+      "presentAtExit": "Présent à la sortie",
+      "add": "Ajouter la ligne",
+      "remove": "Supprimer la ligne",
+      "categoryPlaceholder": "Cuisine, Salon, Literie…",
+      "labelPlaceholder": "Table, Réfrigérateur, Chaises…",
+      "yes": "Oui",
+      "no": "Non",
+      "unknown": "Non renseigné",
+      "saved": "Inventaire mis à jour."
+    },
+    "comparison": {
+      "title": "Comparaison entrée / sortie",
+      "description": "Les écarts sont préparés. Aucune responsabilité, aucune vétusté et aucun montant ne sont décidés ici.",
+      "entryMissing": "Aucun état des lieux d’entrée n’a été enregistré pour ce bail.",
+      "exitMissing": "Aucun état des lieux de sortie n’a été enregistré pour ce bail.",
+      "empty": "Aucun écart à examiner.",
+      "proposed": "{count} écart(s) proposé(s) à examen",
+      "conforms": "La sortie est conforme à l’entrée.",
+      "notConforms": "La sortie diffère de l’entrée.",
+      "columns": {
+        "room": "Pièce",
+        "element": "Élément",
+        "entry": "À l’entrée",
+        "exit": "À la sortie",
+        "status": "Écart",
+        "review": "À examiner"
+      },
+      "status": {
+        "new": "Nouveau",
+        "degraded": "Dégradé",
+        "unchanged": "Inchangé",
+        "improved": "Amélioré",
+        "not_observed": "Non revu à la sortie",
+        "undetermined": "Indéterminé"
+      },
+      "reviewYes": "Oui",
+      "reviewNo": "Non",
+      "inventoryTitle": "Inventaire",
+      "inventoryStatus": {
+        "present": "Présent",
+        "missing": "Manquant",
+        "added": "Ajouté",
+        "absent": "Absent des deux visites",
+        "undetermined": "Non renseigné"
+      },
+      "noAutomaticRetention": "Une pièce manquante appelle une décision ; elle ne devient pas une retenue."
+    },
+    "settlement": {
+      "title": "Restitution du dépôt de garantie",
+      "description": "Le délai court à compter de la remise des clés : un mois si la sortie est conforme à l’entrée, deux mois sinon.",
+      "contractual": "Dépôt prévu au bail",
+      "held": "Dépôt détenu",
+      "keyHandover": "Remise des clés",
+      "conforms": "Sortie conforme",
+      "deadline": "Date limite de restitution",
+      "deadlineMonths": "Délai retenu",
+      "months": "{count} mois",
+      "totalDeductions": "Total des retenues",
+      "restitution": "À restituer",
+      "leaseKind": "Type de bail",
+      "deductionsTitle": "Retenues décidées",
+      "deductionsEmpty": "Aucune retenue décidée. Le dépôt est restitué en totalité.",
+      "deductionsHint": "Une retenue existe seulement si vous avez saisi un montant sur un constat de sortie.",
+      "missingInventoryTitle": "Pièces manquantes à l’inventaire",
+      "missingInventoryHint": "Ces pièces demandent une décision. Tant qu’aucun montant n’est saisi sur un constat, rien n’est retenu.",
+      "justificationsTitle": "Justificatifs de réparation",
+      "justificationsHint": "Rattachez une facture ou un constat de réparation à la visite de sortie : sans justificatif, aucune retenue ne peut être préparée.",
+      "attach": "Rattacher comme justificatif",
+      "attached": "Justificatif rattaché.",
+      "columns": {
+        "label": "Constat",
+        "amount": "Montant",
+        "justifications": "Justificatifs"
+      },
+      "blocked": {
+        "keys_not_handed_over": "La date de remise des clés manque sur l’état des lieux de sortie : le délai ne peut pas être calculé.",
+        "deduction_without_justification": "Une retenue est saisie sans justificatif rattaché à la visite de sortie.",
+        "deductions_exceed_deposit": "Le total des retenues dépasse le dépôt détenu.",
+        "negative_deduction": "Une retenue est négative."
+      }
+    },
+    "errors": {
+      "required": "Ce champ est obligatoire."
+    }
+  }
+}

@@ -10,6 +10,7 @@ import { ErrorBox } from "@/components/feedback/error-box";
 import { PageNav } from "@/components/layout/page-nav";
 import { Button } from "@/components/ui/button";
 import { DateValue } from "@/components/ui/date";
+import { LinkButton } from "@/components/ui/link-button";
 import { Money } from "@/components/ui/money";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { LeaseDetail } from "@/lib/contracts/locations";
@@ -101,10 +102,16 @@ export function LeaseDetailView({ leaseId }: { leaseId: string }) {
         icon={<KeyRound className="size-5" aria-hidden="true" />}
       >
         <LeaseStatusBadge status={data.status} />
-        <Button variant="outline" size="sm" render={<Link href="/locations" />}>
+        <LinkButton href={`/locations/baux/${data.id}/etats-des-lieux`} variant="outline" size="sm">
+          {t("tabs.inspections")}
+        </LinkButton>
+        <LinkButton href={`/locations/baux/${data.id}/revisions`} variant="outline" size="sm">
+          {t("tabs.revisionDetail")}
+        </LinkButton>
+        <LinkButton href="/locations" variant="outline" size="sm">
           <ArrowLeft aria-hidden="true" />
           {t("backToLeases")}
-        </Button>
+        </LinkButton>
       </PageNav>
 
       <Tabs defaultValue="summary">
