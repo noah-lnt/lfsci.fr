@@ -63,5 +63,8 @@ test("the assistant says it is unavailable instead of failing when no model answ
   await panel.getByRole("button", { name: "Envoyer" }).click();
 
   // No key: "n’est pas configuré"; default Ollama with no instance reachable: "indisponible".
-  await expect(panel.getByRole("alert")).toContainText(/n’est pas configuré|indisponible/);
+  // First hit of the API route compiles it on the dev server; allow for that on a cold runner.
+  await expect(panel.getByRole("alert")).toContainText(/n’est pas configuré|indisponible/, {
+    timeout: 30_000,
+  });
 });

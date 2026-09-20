@@ -40,7 +40,8 @@ test("a photo captured from the lot is stored, listed and downloadable", async (
 
   // Mobile WebKit opens the file inline instead of downloading; come back before the scan.
   if (!page.url().includes("/patrimoine/lots/")) {
-    await page.goBack();
+    await page.goto(chain.unitUrl);
+    await page.getByRole("tab", { name: "Documents" }).click();
     await expect(row).toHaveCount(1, { timeout: 20_000 });
   }
   await assertAccessible(page, "onglet Documents du lot");
