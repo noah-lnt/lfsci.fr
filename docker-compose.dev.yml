@@ -1,0 +1,22 @@
+name: lfsci-dev
+
+services:
+  db:
+    build: ./docker/db
+    container_name: lfsci-dev-db
+    environment:
+      POSTGRES_DB: lfsci
+      POSTGRES_USER: lfsci
+      POSTGRES_PASSWORD: ${DEV_DB_PASSWORD:-lfsci}
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - lfsci-dev-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lfsci -d lfsci"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  lfsci-dev-pgdata:

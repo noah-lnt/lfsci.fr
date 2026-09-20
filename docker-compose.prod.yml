@@ -1,0 +1,154 @@
+name: lfsci
+
+x-app-env: &app-env
+  NODE_ENV: production
+  DATABASE_URL: postgres://lfsci:${DB_PASSWORD:?DB_PASSWORD is required}@db:5432/lfsci
+  DATABASE_ADMIN_URL: postgres://lfsci:${DB_PASSWORD:?DB_PASSWORD is required}@db:5432/lfsci
+  APP_URL: https://${APP_HOST:?APP_HOST is required}
+  BETTER_AUTH_URL: https://${APP_HOST:?APP_HOST is required}
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
+  STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-https://s3.fr-par.scw.cloud}
+  STORAGE_REGION: ${STORAGE_REGION:-fr-par}
+  STORAGE_BUCKET: ${STORAGE_BUCKET:?STORAGE_BUCKET is required}
+  STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:?STORAGE_ACCESS_KEY_ID is required}
+  STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:?STORAGE_SECRET_ACCESS_KEY is required}
+  ODOO_BASE_URL: ${ODOO_BASE_URL:-}
+  ODOO_DATABASE: ${ODOO_DATABASE:-}
+  ODOO_API_KEY: ${ODOO_API_KEY:-}
+  ODOO_RATE_LIMIT_PER_SECOND: ${ODOO_RATE_LIMIT_PER_SECOND:-1}
+  AI_PROVIDER: ${AI_PROVIDER:-bedrock}
+  AI_MODEL: ${AI_MODEL:-claude-opus-5}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  AWS_REGION: ${AWS_REGION:-eu-west-3}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+  MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+  MISTRAL_BASE_URL: ${MISTRAL_BASE_URL:-https://api.mistral.ai}
+  GLADIA_API_KEY: ${GLADIA_API_KEY:-}
+  RESEND_API_KEY: ${RESEND_API_KEY:-}
+  RESEND_WEBHOOK_SECRET: ${RESEND_WEBHOOK_SECRET:-}
+  MAIL_FROM: ${MAIL_FROM:-noreply@lfsci.fr}
+  SMSMODE_API_KEY: ${SMSMODE_API_KEY:-}
+  SMSMODE_WEBHOOK_SECRET: ${SMSMODE_WEBHOOK_SECRET:-}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  LOG_FORMAT: json
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: lfsci-web
+    restart: unless-stopped
+    environment: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [web, internal]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: web
+      traefik.http.routers.lfsci-web.rule: Host(`${APP_HOST}`)
+      traefik.http.routers.lfsci-web.entrypoints: websecure
+      traefik.http.routers.lfsci-web.tls.certresolver: letsencrypt
+      traefik.http.services.lfsci-web.loadbalancer.server.port: "3000"
+      traefik.http.services.lfsci-web.loadbalancer.healthcheck.path: /readyz
+      traefik.http.services.lfsci-web.loadbalancer.healthcheck.interval: 30s
+      traefik.http.routers.lfsci-web-http.rule: Host(`${APP_HOST}`)
+      traefik.http.routers.lfsci-web-http.entrypoints: web
+      traefik.http.routers.lfsci-web-http.middlewares: lfsci-redirect
+      traefik.http.middlewares.lfsci-redirect.redirectscheme.scheme: https
+      traefik.http.middlewares.lfsci-redirect.redirectscheme.permanent: "true"
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: lfsci-worker
+    restart: unless-stopped
+    environment: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [internal]
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: lfsci-migrate
+    profiles: [migrate]
+    environment: *app-env
+    command: ["node", "dist/migrate.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [internal]
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  db:
+    build: ./docker/db
+    container_name: lfsci-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lfsci
+      POSTGRES_USER: lfsci
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - lfsci-pgdata:/var/lib/postgresql
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lfsci -d lfsci"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  backup:
+    build: ./docker/backup
+    container_name: lfsci-backup
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: lfsci
+      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      PGDATABASE: lfsci
+      BACKUP_BUCKET: ${BACKUP_BUCKET:?BACKUP_BUCKET is required}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-35}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-https://s3.fr-par.scw.cloud}
+      STORAGE_REGION: ${STORAGE_REGION:-fr-par}
+      AWS_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:?STORAGE_ACCESS_KEY_ID is required}
+      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:?STORAGE_SECRET_ACCESS_KEY is required}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [internal]
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+networks:
+  web:
+    external: true
+  internal:
+    name: lfsci-internal
+
+volumes:
+  lfsci-pgdata:
