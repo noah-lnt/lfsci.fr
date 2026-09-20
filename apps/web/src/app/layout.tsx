@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import { getMessages } from "next-intl/server";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -25,6 +26,7 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const messages = await getMessages();
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html
       lang="fr"
@@ -32,7 +34,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <Providers locale="fr" messages={messages as Record<string, unknown>}>
+        <Providers
+          locale="fr"
+          messages={messages as Record<string, unknown>}
+          {...(nonce ? { nonce } : {})}
+        >
           {children}
         </Providers>
       </body>

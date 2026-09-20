@@ -4,7 +4,7 @@ import { validate as isUuid, v7 as uuidv7 } from "uuid";
 
 const REQUEST_ID_HEADER = "x-request-id";
 
-function contentSecurityPolicy(nonce: string, isDev: boolean): string {
+export function contentSecurityPolicy(nonce: string, isDev: boolean): string {
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
@@ -13,6 +13,8 @@ function contentSecurityPolicy(nonce: string, isDev: boolean): string {
     "img-src 'self' blob: data:",
     "font-src 'self' data:",
     "connect-src 'self'",
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

@@ -6,6 +6,7 @@ import { assistantClient } from "@/server/assistant/client";
 import { createAssistantPorts } from "@/server/assistant/ports";
 import { createEventMapper, encodeEvent, errorEvent } from "@/server/assistant/sse";
 import { auth } from "@/server/auth";
+import { rateLimit, tooManyRequests } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +43,9 @@ function singleFrame(
 
 export async function POST(request: Request): Promise<Response> {
   const requestId = requestIdFromHeader(request.headers.get(REQUEST_ID_HEADER));
+
+  const throttle = rateLimit("assistant", request);
+  if (!throttle.allowed) return tooManyRequests(throttle, requestId);
 
   const session = await auth().api.getSession({ headers: request.headers });
   if (!session) return singleFrame(requestId, "UNAUTHENTICATED");
