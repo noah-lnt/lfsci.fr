@@ -31,6 +31,8 @@ export type RevisionProposal =
       ok: true;
       currentRent: string;
       newRent: string;
+      /** IRL-01: the exact quotient is kept beside the rounded rent. */
+      newRentUnrounded: string;
       increase: string;
       baseIndex: IndexValue;
       newIndex: IndexValue;
@@ -69,11 +71,13 @@ export function proposeRevision(input: RevisionInput): RevisionProposal {
   const next = money(input.newIndex.value);
   if (base.isZero()) return blocked("missing_index", ["baseIndex.value"]);
 
-  const revised = roundCent(current.times(next).dividedBy(base));
+  const exact = current.times(next).dividedBy(base);
+  const revised = roundCent(exact);
   return {
     ok: true,
     currentRent: toMoney(current),
     newRent: toMoney(revised),
+    newRentUnrounded: exact.toDecimalPlaces(6).toFixed(6),
     increase: toMoney(revised.minus(current)),
     baseIndex: input.baseIndex,
     newIndex: input.newIndex,

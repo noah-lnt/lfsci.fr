@@ -1,0 +1,83 @@
+{
+  "revisions": {
+    "title": "Révision du loyer",
+    "description": "Indice de référence, contrôle du DPE et courrier de notification",
+    "loading": "Chargement…",
+    "back": "Retour au bail",
+    "context": {
+      "title": "Bases de la révision",
+      "index": "Indice",
+      "referenceQuarter": "Trimestre de référence",
+      "revisionMonth": "Mois de révision",
+      "nextRevisionOn": "Prochaine révision possible",
+      "energyClass": "Classe énergétique (DPE)",
+      "territory": "Territoire",
+      "unit": "Lot",
+      "chargeAmount": "Provisions sur charges",
+      "seriesSource": "Source de l’indice",
+      "seriesUpdatedAt": "Série mise à jour le",
+      "seriesMissing": "Aucune série d’indice enregistrée : le rafraîchissement trimestriel n’a encore rien écrit."
+    },
+    "territoryValue": {
+      "metropole": "Métropole",
+      "outre_mer": "Outre-mer"
+    },
+    "indexName": {
+      "irl": "IRL — indice de référence des loyers",
+      "ilc": "ILC — indice des loyers commerciaux",
+      "ilat": "ILAT — indice des loyers des activités tertiaires"
+    },
+    "proposal": {
+      "title": "Proposition de révision",
+      "currentRent": "Loyer hors charges actuel",
+      "newRent": "Loyer hors charges révisé",
+      "newRentUnrounded": "Valeur calculée avant arrondi",
+      "increase": "Variation",
+      "baseIndex": "Ancien indice",
+      "newIndex": "Nouvel indice",
+      "effectiveFrom": "Applicable à compter du",
+      "noRetroactivity": "La révision s’applique pour l’avenir : aucun rappel n’est produit sur les termes déjà appelés.",
+      "prepare": "Préparer la révision",
+      "prepared": "Révision préparée : la commande attend une validation humaine (niveau D).",
+      "preparedHint": "Rien n’est appliqué tant que la validation n’a pas eu lieu."
+    },
+    "blockedTitle": "Révision bloquée",
+    "blocked": {
+      "missing_clause": "Le bail ne porte pas de clause de révision.",
+      "missing_index": "Une valeur nécessaire au calcul manque : indice, trimestre de référence ou DPE.",
+      "quarter_mismatch": "Les deux indices ne portent pas le même trimestre de référence.",
+      "dpe_frozen": "Le logement est classé F ou G : le loyer est gelé en métropole.",
+      "not_due_yet": "La date de révision prévue au bail n’est pas atteinte."
+    },
+    "missingFields": "Éléments manquants : {fields}",
+    "series": {
+      "title": "Valeurs d’indice disponibles",
+      "empty": "Aucune valeur d’indice disponible.",
+      "period": "Trimestre",
+      "value": "Valeur"
+    },
+    "history": {
+      "title": "Révisions enregistrées",
+      "empty": "Aucune révision enregistrée pour ce bail.",
+      "requestedOn": "Demandée le",
+      "effectiveOn": "Effet au",
+      "baseRent": "Loyer de base",
+      "proposedRent": "Loyer proposé",
+      "indices": "Indices",
+      "status": "État",
+      "command": "Commande",
+      "letter": "Courrier",
+      "issueLetter": "Éditer le courrier",
+      "letterIssued": "Courrier de notification demandé.",
+      "letterReady": "Courrier édité"
+    },
+    "statusValue": {
+      "blocked": "Bloquée",
+      "proposed": "Proposée",
+      "approved": "Validée",
+      "applied": "Appliquée",
+      "refused": "Refusée",
+      "expired": "Expirée"
+    }
+  }
+}
